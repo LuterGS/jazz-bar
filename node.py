@@ -1,5 +1,6 @@
 import grpc
 import threading
+import logging
 from concurrent import futures
 from service import NodeService
 
@@ -9,30 +10,35 @@ from protos.output import chord_pb2
 from protos.output import chord_pb2_grpc
 
 class Node:
-    # id : int
-    # host : string
-    # port : string
+    """
+    - id : int
+    - host : string
+    - port : string
+    """
     pass
 
 class FingerTableEntry:
-    # start : int
-    # sucessor : Node
+    """
+    - start : int
+    - sucessor : Node
+    """
     pass
 
 class ChordNode(Node):
-    # id : int
-    # host : string
-    # port : string
+    """
+    id : int
+    host : string
+    port : string
 
-    # service : Service
-    # server : grpc.server
+    service : Service
+    server : grpc.server
 
-    # finger_table : array<FingerTableEntry>
-    # successor_table: array<Node>
-    # predecessor: Node
+    finger_table : array<FingerTableEntry>
+    successor_table: array<Node>
+    predecessor: Node
 
-    # data_table : dict<string>:string
-
+    data_table : dict<string>:string
+    """
     def __init__(self, host, port):
         self.id = generate_hash(host, port)
         self.host = host
@@ -42,11 +48,11 @@ class ChordNode(Node):
 
     # TODO : join 함수 구현 (우선순위 높음)
     def join_cluster(self, join_address):
-        print(f'join from {self.host}:{self.port} to {join_address}')
+        logging.info(f'join from {self.host}:{self.port} to {join_address}')
         with grpc.insecure_channel(join_address) as channel:
             stub = chord_pb2_grpc.NodeStub(channel)
-            response = stub.SayHello(chord_pb2.HelloRequest(name='hello', age=15))
-        print("Greeter client received: " + response.message)
+            response = stub.SayHello(chord_pb2.HelloRequest(name=join_address, age=15))
+        logging.info(f'{self.host}:{self.port} received {response.message}')
 
     # TODO : Get/Set/Remove/Join에 대한 핸들링 추가 및 프로토콜 결정 (우선순위 높음)
     def command_handler(self, command):
@@ -78,7 +84,7 @@ class ChordNode(Node):
         self.server.add_insecure_port(address)
         self.server.start()
 
-        print(f'ChordServer [{self.host}] listening on {self.port}')
+        logging.info(f'ChordServer is listening on {self.host}:{self.port}')
         # self.server.wait_for_termination()
 
         # input thread

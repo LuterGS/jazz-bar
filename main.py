@@ -1,4 +1,5 @@
 from node import ChordNode
+import logging
 import argparse
 
 
@@ -11,11 +12,20 @@ def init_parser():
 
 # TODO : logger 추가
 def init_logger():
-    pass
+    log = logging.getLogger()
+    log.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        '[%(levelname)s] %(asctime)s (%(filename)s:%(lineno)d) : %(message)s'
+    )
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
 
 
 if __name__ == '__main__':
+    init_logger()
     parser = init_parser()
     args = parser.parse_args()
-    print(args.host, args.port)
     node = ChordNode(args.host, args.port)
