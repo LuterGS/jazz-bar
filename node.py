@@ -17,10 +17,14 @@ class Node:
     """
     pass
 
-class FingerTableEntry:
+class TableEntry:
     """
-    - start : int
-    - sucessor : Node
+    자동정렬된 List를 가지고 있는 class
+
+    구현해야하는 함수
+    1. append : 리스트에 자동 정렬해서 값을 넣음
+    2. find (or find_nearest) : 요청한 값에 가장 가까운 value를 찾아줌
+    3. update (or modify) : Finger Table 하나의 값을 삭제 혹은 변경
     """
     pass
 
@@ -33,11 +37,10 @@ class ChordNode(Node):
     service : Service
     server : grpc.server
 
-    finger_table : array<FingerTableEntry>
-    successor_table: array<Node>
+    finger table과 data table은 별도의 class로 관리
+    해당 class는 자동 정렬 기능이 있는 list를 담고 있음
     predecessor: Node
 
-    data_table : dict<string>:string
     """
     def __init__(self, host, port):
         self.id = generate_hash(host, port)
