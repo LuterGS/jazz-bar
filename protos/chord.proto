@@ -14,3 +14,48 @@ message HelloRequest {
 message HelloReply {
   string message = 1;
 }
+
+
+service HealthChecker{
+  rpc Check (HealthCheck) returns (HealthReply) {}
+}
+
+message HealthCheck{
+  uint32 ping = 1;
+}
+
+message HealthReply{
+  uint32 pong = 1;
+}
+
+// 각 노드에게 노드가 가지고있는 predecessor, successor 등의 정보 요청
+service GetNodeValue{
+  rpc GetNodeVal (NodeDetail) returns (NodeVal) {}
+}
+
+message NodeDetail{
+  string node_id = 1;
+  uint32 which_node = 2;
+}
+
+message NodeVal{
+  string node_id = 1;
+  string node_host = 2;
+  string node_port = 3;
+}
+
+
+// 각 노드에게 메시지 전달
+service NotifyNode{
+  rpc NotifyNodeChanged (NodeType) returns (HealthReply) {}
+}
+// 해당 노드에게
+// predecessor, successor, double_successor 값을
+// NodeType와 같이 바꾸라고 알림
+
+message NodeType{
+  string node_id = 1;
+  string node_host = 2;
+  string node_port = 3;
+  uint32 which_node = 4;
+}
