@@ -3,7 +3,8 @@ from grpc._channel import _InactiveRpcError
 import threading
 import logging
 from concurrent import futures
-from service import HealthCheckService, GetNodeValueService, NotifyNodeService, node_health_check, notify_node_info, request_node_info
+from service import HealthCheckService, GetNodeValueService, NotifyNodeService, TossMessageService, node_health_check, notify_node_info, request_node_info, toss_message
+from data_structure import Node
 
 from utils import generate_hash
 
@@ -14,18 +15,6 @@ import time
 
 
 
-
-class Node:
-    def __init__(self, id, host, port, name="Node"):
-        self.id = id
-        self.host = host
-        self.port = port
-        self.name = name
-    def get_address(self):
-        return self.host + ":" + self.port
-    def update_info(self, id, host, port):
-        logging.info(f'{self.name} is updated, {self.get_address()} to {host}:{port}')
-        self.__init__(id, host, port)
 
 class TableEntry:
     """
@@ -60,20 +49,23 @@ class ChordNode(Node):
         # for testing
         if port == "50051":
             self.predecessor = Node(self.id, self.host, "50054", "predecessor")
-            self.successor = Node(self.id, self.host, "50052", "successor")
-            self.double_successor = Node(self.id, self.host, "50053", "double_successor")
-        if port == "50052":
-            self.predecessor = Node(self.id, self.host, "50051", "predecessor")
             self.successor = Node(self.id, self.host, "50053", "successor")
             self.double_successor = Node(self.id, self.host, "50054", "double_successor")
+        if port == "50052":
+            self.predecessor = Node(self.id, self.host, self.port, "predecessor")               # for testing join (join localhost:50053)
+            self.successor = Node(self.id, self.host, self.port, "successor")
+            self.double_successor = Node(self.id, self.host, self.port, "double_successor")
+            # self.predecessor = Node(self.id, self.host, "50051", "predecessor")
+            # self.successor = Node(self.id, self.host, "50053", "successor")
+            # self.double_successor = Node(self.id, self.host, "50054", "double_successor")
         if port == "50053":
-            self.predecessor = Node(self.id, self.host, "50052", "predecessor")
+            self.predecessor = Node(self.id, self.host, "50051", "predecessor")
             self.successor = Node(self.id, self.host, "50054", "successor")
             self.double_successor = Node(self.id, self.host, "50051", "double_successor")
         if port == "50054":
             self.predecessor = Node(self.id, self.host, "50053", "predecessor")
             self.successor = Node(self.id, self.host, "50051", "successor")
-            self.double_successor = Node(self.id, self.host, "50052", "double_successor")
+            self.double_successor = Node(self.id, self.host, "50053", "double_successor")
         self.node_table = [self.predecessor, self.successor, self.double_successor]
         self.for_log = ["predecessor", "sucessor", "double_successor"]
 
@@ -81,38 +73,41 @@ class ChordNode(Node):
 
     # TODO : join 함수 구현 (우선순위 높음)
     def join_cluster(self, join_address):
+        join_address = join_address.split(":")
+        new_node = Node("will replaced", join_address[0], join_address[1])
+        toss_message(self, new_node, 1)
 
-        logging.info(f'join from {self.host}:{self.port} to {join_address}')
-        with grpc.insecure_channel(join_address) as channel:
-            stub = chord_pb2_grpc.NodeStub(channel)
-            response = stub.SayHello(chord_pb2.HelloRequest(name=join_address, age=15))
-        logging.info(f'{self.host}:{self.port} received {response.message}')
-
-
+    def log_nodes(self):
+        for node in self.node_table:
+            logging.info(f'current {node.name} : {node.get_address()}')
+        print()
 
     def health_check(self):
+        self.log_nodes()
         while True:
-            for node in self.node_table:
-                logging.info(f'current {node.name} : {node.get_address()}')
-            print()
 
-            time.sleep(5)
+            time.sleep(3)
 
             if node_health_check(self.predecessor):                             # predecessor가 접속되지 않는다면, 변경 요청이 오기 때문에 신경쓰지 않아도 됨
                 pass
 
             if not node_health_check(self.successor):                           # successor가 접속되지 않는다면,
                 logging.info(f'successor is out of connection, change to {self.double_successor.get_address()}')
-                self.successor = self.double_successor                          # double successor를 successor로 교체 후에
-                notify_node_info(self, self.successor, 0)                             # successor에게 본인이 successor의 predecessor라고 알려줌
+                self.successor.update_info(self.double_successor.id, self.double_successor.host, self.double_successor.port)
+                                                                                # double successor를 successor로 교체 후에
+                notify_node_info(self, self.successor, 0)                       # successor에게 본인이 successor의 predecessor라고 알려줌
 
                 d_id, d_host, d_port = request_node_info(self.successor, 1)     # 이후, successor에게 successor를 물어보고
                 self.double_successor.update_info(d_id, d_host, d_port)         # 그 값을 double_successor에 저장함
+
+                self.log_nodes()
 
             if not node_health_check(self.double_successor):                    # 만약 double_successor가 접속되지 않는다면
                 logging.info("double successor is out of connection")
                 s_id, s_host, s_port = request_node_info(self.successor, 2)     # successor의 successor를 물어보고
                 self.double_successor.update_info(s_id, s_host, s_port)         # 그 값을 double_successor에 저장
+
+                self.log_nodes()
 
 
     # TODO : Get/Set/Remove/Join에 대한 핸들링 추가 및 프로토콜 결정 (우선순위 높음)
@@ -120,7 +115,7 @@ class ChordNode(Node):
         commands = command.split()
 
         if commands[0] == 'get':
-            pass
+            print("GETGET")
         elif commands[0] == 'set':
             pass
         elif commands[0] == 'remove':
@@ -146,6 +141,7 @@ class ChordNode(Node):
         chord_pb2_grpc.add_HealthCheckerServicer_to_server(HealthCheckService(self), self.server)
         chord_pb2_grpc.add_GetNodeValueServicer_to_server(GetNodeValueService(self), self.server)
         chord_pb2_grpc.add_NotifyNodeServicer_to_server(NotifyNodeService(self), self.server)
+        chord_pb2_grpc.add_TossMessageServicer_to_server(TossMessageService(self), self.server)
 
         address = self.host+":"+self.port
         self.server.add_insecure_port(address)
@@ -155,5 +151,9 @@ class ChordNode(Node):
         # self.server.wait_for_termination()
 
         # input thread
-        threading.Thread(target=self.health_check()).start()
-        # threading.Thread(target=self.listen_command()).start()
+        health_checker = threading.Thread(target=self.health_check)
+        command_listener = threading.Thread(target=self.listen_command)
+        health_checker.start()
+        command_listener.start()
+
+
