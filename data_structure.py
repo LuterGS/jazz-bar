@@ -16,5 +16,5 @@ class Node:
     # @dispatch(str, str, str)
     def update_info(self, id, host, port):
         with self.lock:
-            logging.info(f'{self.name} is updated, {self.get_address()} to {host}:{port}')
+            logging.info(f'{self.name} is updated, {self.id[:10]}:{self.get_address()} to {id[:10]}:{host}:{port}')
             self.__init__(id, host, port, self.name)

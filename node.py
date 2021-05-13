@@ -39,7 +39,7 @@ class ChordNode(Node):
     """
     def __init__(self, host, port):
         self.id = generate_hash(host, port)
-        # print(self.id, type(self.id))
+        print(self.id, type(self.id))
         super().__init__(self.id, host, port)
         self.server = None
         # self.predecessor = Node(self.id, self.host, self.port, "predecessor")
@@ -48,24 +48,24 @@ class ChordNode(Node):
         # self.double_successor = Node(self.id, self.host, self.port, "double_successor")
         # for testing
         if port == "50051":
-            self.predecessor = Node(self.id, self.host, "50054", "predecessor")
-            self.successor = Node(self.id, self.host, "50053", "successor")
-            self.double_successor = Node(self.id, self.host, "50054", "double_successor")
-        if port == "50052":
+            self.predecessor = Node("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", self.host, "50054", "predecessor")
+            self.successor = Node("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", self.host, "50054", "successor")
+            self.double_successor = Node(self.id, self.host, self.port, "double_successor")
+        if port == "50052" or port == "50053":
             self.predecessor = Node(self.id, self.host, self.port, "predecessor")               # for testing join (join localhost:50053)
             self.successor = Node(self.id, self.host, self.port, "successor")
             self.double_successor = Node(self.id, self.host, self.port, "double_successor")
             # self.predecessor = Node(self.id, self.host, "50051", "predecessor")
             # self.successor = Node(self.id, self.host, "50053", "successor")
             # self.double_successor = Node(self.id, self.host, "50054", "double_successor")
-        if port == "50053":
-            self.predecessor = Node(self.id, self.host, "50051", "predecessor")
-            self.successor = Node(self.id, self.host, "50054", "successor")
-            self.double_successor = Node(self.id, self.host, "50051", "double_successor")
+        # if port == "50053":
+        #     self.predecessor = Node(self.id, self.host, "50051", "predecessor")
+        #     self.successor = Node(self.id, self.host, "50054", "successor")
+        #     self.double_successor = Node(self.id, self.host, "50051", "double_successor")
         if port == "50054":
-            self.predecessor = Node(self.id, self.host, "50053", "predecessor")
-            self.successor = Node(self.id, self.host, "50051", "successor")
-            self.double_successor = Node(self.id, self.host, "50053", "double_successor")
+            self.predecessor = Node("a09b0ce42948043810a1f2cc7e7079aec7582f29", self.host, "50051", "predecessor")
+            self.successor = Node("a09b0ce42948043810a1f2cc7e7079aec7582f29", self.host, "50051", "successor")
+            self.double_successor = Node(self.id, self.host, self.port, "double_successor")
         self.node_table = [self.predecessor, self.successor, self.double_successor]
         self.for_log = ["predecessor", "sucessor", "double_successor"]
 
@@ -79,7 +79,7 @@ class ChordNode(Node):
 
     def log_nodes(self):
         for node in self.node_table:
-            logging.info(f'current {node.name} : {node.get_address()}')
+            logging.info(f'current {node.name} : {node.id[:10]}:{node.get_address()}')
         print()
 
     def health_check(self):

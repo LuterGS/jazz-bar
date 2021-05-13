@@ -110,8 +110,8 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
         logging.info(f'Toss Message received, {request.node_host}, {request.node_port}')
         if request.message_type == 1:
             new_node = Node(request.node_id, request.node_host, request.node_port)
-            if self.chord_node.port < request.node_port < self.chord_node.successor.port or \
-                    (self.chord_node.successor.port < self.chord_node.port < request.node_port):
+            if self.chord_node.id < request.node_id < self.chord_node.successor.id or \
+                    (self.chord_node.successor.id < self.chord_node.id < request.node_id):
                 # 정상 경우일 때와
                 # 끝 노드일 때도 확인해야함
 
