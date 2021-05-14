@@ -4,6 +4,8 @@ import logging
 from concurrent import futures
 from service import NodeService
 
+from data_structure import TableEntry
+
 from utils import generate_hash
 
 from protos.output import chord_pb2
@@ -17,16 +19,12 @@ class Node:
     """
     pass
 
-class TableEntry:
-    """
-    자동정렬된 List를 가지고 있는 class
-
-    구현해야하는 함수
-    1. append : 리스트에 자동 정렬해서 값을 넣음
-    2. find (or find_nearest) : 요청한 값에 가장 가까운 value를 찾아줌
-    3. update (or modify) : Finger Table 하나의 값을 삭제 혹은 변경
-    """
+class DataTable(TableEntry):
     pass
+
+class FingerTable(TableEntry):
+    pass
+
 
 class ChordNode(Node):
     """
