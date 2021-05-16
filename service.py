@@ -4,6 +4,8 @@ import threading
 from threading import Lock
 import logging
 from data_structure import Node
+from utils import NodeType as n
+from utils import TossMessageType as t
 
 from grpc._channel import _InactiveRpcError
 
@@ -62,61 +64,61 @@ def toss_message(starter_node: Node, receive_node: Node, message_type: int):
 
 
 class HealthCheckService(chord_pb2_grpc.HealthCheckerServicer):
-    def __init__(self, chord_node):
-        self.chord_node = chord_node
+    def __init__(self, node_table):
+        self.node_table = node_table
 
     def Check(self, request, context):
         return chord_pb2.HealthReply(pong=0)
 
 
 class GetNodeValueService(chord_pb2_grpc.GetNodeValueServicer):
-    def __init__(self, chord_node):
-        self.chord_node = chord_node
+    def __init__(self, node_table):
+        self.node_table = node_table
 
     def GetNodeVal(self, request, context):
-        which_node = int(request.which_node)
-        id = self.chord_node.node_table[which_node].id
-        host = self.chord_node.node_table[which_node].host
-        port = self.chord_node.node_table[which_node].port
+        which_node = request.which_node
+        id = self.node_table[which_node].id
+        host = self.node_table[which_node].host
+        port = self.node_table[which_node].port
         return chord_pb2.NodeVal(node_id=id, node_host=host, node_port=port)
 
 
 class NotifyNodeService(chord_pb2_grpc.NotifyNodeServicer):
-    def __init__(self, chord_node):
-        self.chord_node = chord_node
+    def __init__(self, node_table):
+        self.node_table = node_table
 
     def NotifyNodeChanged(self, request, context):
         which_node = int(request.which_node)
-        self.chord_node.node_table[which_node].update_info(request.node_id, request.node_host, request.node_port)
+        self.node_table[which_node].update_info(request.node_id, request.node_host, request.node_port)
         return chord_pb2.HealthReply(pong=0)
 
 
 class TossMessageService(chord_pb2_grpc.TossMessageServicer):
-    def __init__(self, chord_node):
-        self.chord_node = chord_node
+    def __init__(self, node_table):
+        self.node_table = node_table
 
     def notify_new_node_income(self, new_node: Node):
-        notify_node_info(new_node, self.chord_node.successor, 0)
-        notify_node_info(self.chord_node, new_node, 0)
-        notify_node_info(self.chord_node.successor, new_node, 1)
-        notify_node_info(self.chord_node.double_successor, new_node, 2)
-        self.chord_node.double_successor.update_info(self.chord_node.successor.id, self.chord_node.successor.host,
-                                                     self.chord_node.successor.port)
-        self.chord_node.successor.update_info(new_node.id, new_node.host, new_node.port)
+        notify_node_info(new_node, self.node_table[n.successor], n.predecessor)
+        notify_node_info(self.node_table.cur_node, new_node, n.predecessor)
+        notify_node_info(self.node_table[n.successor], new_node, n.successor)
+        notify_node_info(self.node_table[n.double_successor], new_node, n.double_successor)
+        self.node_table[n.double_successor].update_info(self.node_table[n.successor].id, self.node_table[n.successor].host,
+                                                     self.node_table[n.successor].port)
+        self.node_table[n.successor].update_info(new_node.id, new_node.host, new_node.port)
         threading.Thread(target=notify_node_info,
-                         args=(self.chord_node.successor, self.chord_node.predecessor, 2,)).start()
+                         args=(self.node_table[n.successor], self.node_table[n.predecessor], n.double_successor,)).start()
 
     def TM(self, request, context):
         logging.info(f'Toss Message received, {request.node_host}, {request.node_port}')
-        if request.message_type == 1:
+        if request.message_type == t.join_node:
             new_node = Node(request.node_id, request.node_host, request.node_port)
-            if self.chord_node.id < request.node_id < self.chord_node.successor.id or \
-                    (self.chord_node.successor.id < self.chord_node.id < request.node_id):
+            if self.node_table.cur_node.id < request.node_id < self.node_table[n.successor].id or \
+                    (self.node_table[n.successor].id < self.node_table.cur_node.id < request.node_id):
                 # 정상 경우일 때와
                 # 끝 노드일 때도 확인해야함
 
                 logging.info(f'adding {request.node_host}:{request.node_port}...')
                 self.notify_new_node_income(new_node)
             else:
-                threading.Thread(target=toss_message, args=(new_node, self.chord_node.successor, request.message_type,)).start()
+                threading.Thread(target=toss_message, args=(new_node, self.node_table[n.successor], request.message_type,)).start()
             return chord_pb2.HealthReply(pong=0)
