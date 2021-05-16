@@ -8,6 +8,8 @@ from node_table import NodeTable
 from service import HealthCheckService, GetNodeValueService, NotifyNodeService, TossMessageService, node_health_check, notify_node_info, request_node_info, toss_message
 from data_structure import Node
 
+from data_structure import TableEntry
+
 from utils import generate_hash
 
 from protos.output import chord_pb2
@@ -15,18 +17,6 @@ from protos.output import chord_pb2_grpc
 
 import time
 
-
-
-
-class TableEntry:
-    """
-    자동정렬된 List를 가지고 있는 class
-    구현해야하는 함수
-    1. append : 리스트에 자동 정렬해서 값을 넣음
-    2. find (or find_nearest) : 요청한 값에 가장 가까운 value를 찾아줌
-    3. update (or modify) : Finger Table 하나의 값을 삭제 혹은 변경
-    """
-    pass
 
 class ChordNode(Node):
     """
