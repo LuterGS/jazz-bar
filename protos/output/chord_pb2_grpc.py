@@ -2,54 +2,56 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from protos.output import chord_pb2 as chord__pb2
+from . import chord_pb2 as chord__pb2
 
 
-class NodeStub(object):
-    """Missing associated documentation comment in .proto file."""
+class HealthCheckerStub(object):
+    """successor, predecessor health check
+    """
 
     def __init__(self, channel):
         """Constructor.
-
         Args:
             channel: A grpc.Channel.
         """
-        self.SayHello = channel.unary_unary(
-                '/chord.Node/SayHello',
-                request_serializer=chord__pb2.HelloRequest.SerializeToString,
-                response_deserializer=chord__pb2.HelloReply.FromString,
+        self.Check = channel.unary_unary(
+                '/chord.HealthChecker/Check',
+                request_serializer=chord__pb2.HealthCheck.SerializeToString,
+                response_deserializer=chord__pb2.HealthReply.FromString,
                 )
 
 
-class NodeServicer(object):
-    """Missing associated documentation comment in .proto file."""
+class HealthCheckerServicer(object):
+    """successor, predecessor health check
+    """
 
-    def SayHello(self, request, context):
+    def Check(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_NodeServicer_to_server(servicer, server):
+def add_HealthCheckerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SayHello': grpc.unary_unary_rpc_method_handler(
-                    servicer.SayHello,
-                    request_deserializer=chord__pb2.HelloRequest.FromString,
-                    response_serializer=chord__pb2.HelloReply.SerializeToString,
+            'Check': grpc.unary_unary_rpc_method_handler(
+                    servicer.Check,
+                    request_deserializer=chord__pb2.HealthCheck.FromString,
+                    response_serializer=chord__pb2.HealthReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'chord.Node', rpc_method_handlers)
+            'chord.HealthChecker', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class Node(object):
-    """Missing associated documentation comment in .proto file."""
+class HealthChecker(object):
+    """successor, predecessor health check
+    """
 
     @staticmethod
-    def SayHello(request,
+    def Check(request,
             target,
             options=(),
             channel_credentials=None,
@@ -59,8 +61,197 @@ class Node(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/chord.Node/SayHello',
-            chord__pb2.HelloRequest.SerializeToString,
-            chord__pb2.HelloReply.FromString,
+        return grpc.experimental.unary_unary(request, target, '/chord.HealthChecker/Check',
+            chord__pb2.HealthCheck.SerializeToString,
+            chord__pb2.HealthReply.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+
+class GetNodeValueStub(object):
+    """각 노드에게 노드가 가지고있는 predecessor, successor 등의 정보 요청
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetNodeVal = channel.unary_unary(
+                '/chord.GetNodeValue/GetNodeVal',
+                request_serializer=chord__pb2.NodeDetail.SerializeToString,
+                response_deserializer=chord__pb2.NodeVal.FromString,
+                )
+
+
+class GetNodeValueServicer(object):
+    """각 노드에게 노드가 가지고있는 predecessor, successor 등의 정보 요청
+    """
+
+    def GetNodeVal(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_GetNodeValueServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetNodeVal': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNodeVal,
+                    request_deserializer=chord__pb2.NodeDetail.FromString,
+                    response_serializer=chord__pb2.NodeVal.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'chord.GetNodeValue', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class GetNodeValue(object):
+    """각 노드에게 노드가 가지고있는 predecessor, successor 등의 정보 요청
+    """
+
+    @staticmethod
+    def GetNodeVal(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chord.GetNodeValue/GetNodeVal',
+            chord__pb2.NodeDetail.SerializeToString,
+            chord__pb2.NodeVal.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+
+class NotifyNodeStub(object):
+    """각 노드에게 노드의 변경 정보 알려줌
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.NotifyNodeChanged = channel.unary_unary(
+                '/chord.NotifyNode/NotifyNodeChanged',
+                request_serializer=chord__pb2.NodeType.SerializeToString,
+                response_deserializer=chord__pb2.HealthReply.FromString,
+                )
+
+
+class NotifyNodeServicer(object):
+    """각 노드에게 노드의 변경 정보 알려줌
+    """
+
+    def NotifyNodeChanged(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_NotifyNodeServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'NotifyNodeChanged': grpc.unary_unary_rpc_method_handler(
+                    servicer.NotifyNodeChanged,
+                    request_deserializer=chord__pb2.NodeType.FromString,
+                    response_serializer=chord__pb2.HealthReply.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'chord.NotifyNode', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class NotifyNode(object):
+    """각 노드에게 노드의 변경 정보 알려줌
+    """
+
+    @staticmethod
+    def NotifyNodeChanged(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chord.NotifyNode/NotifyNodeChanged',
+            chord__pb2.NodeType.SerializeToString,
+            chord__pb2.HealthReply.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+
+class TossMessageStub(object):
+    """노드에게 메시지 전송
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.TM = channel.unary_unary(
+                '/chord.TossMessage/TM',
+                request_serializer=chord__pb2.Message.SerializeToString,
+                response_deserializer=chord__pb2.HealthReply.FromString,
+                )
+
+
+class TossMessageServicer(object):
+    """노드에게 메시지 전송
+    """
+
+    def TM(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_TossMessageServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'TM': grpc.unary_unary_rpc_method_handler(
+                    servicer.TM,
+                    request_deserializer=chord__pb2.Message.FromString,
+                    response_serializer=chord__pb2.HealthReply.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'chord.TossMessage', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class TossMessage(object):
+    """노드에게 메시지 전송
+    """
+
+    @staticmethod
+    def TM(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chord.TossMessage/TM',
+            chord__pb2.Message.SerializeToString,
+            chord__pb2.HealthReply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

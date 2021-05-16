@@ -2,15 +2,65 @@ syntax = "proto3";
 
 package chord;
 
-service Node {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+// successor, predecessor health check
+service HealthChecker{
+  rpc Check (HealthCheck) returns (HealthReply) {}
 }
 
-message HelloRequest {
-  string name = 1;
-  uint32 age = 2;
+message HealthCheck{
+  uint32 ping = 1;
 }
 
-message HelloReply {
-  string message = 1;
+message HealthReply{
+  uint32 pong = 1;
+}
+
+// 각 노드에게 노드가 가지고있는 predecessor, successor 등의 정보 요청
+service GetNodeValue{
+  rpc GetNodeVal (NodeDetail) returns (NodeVal) {}
+}
+
+message NodeDetail{
+  string node_id = 1;
+  uint32 which_node = 2;
+}
+
+message NodeVal{
+  string node_id = 1;
+  string node_host = 2;
+  string node_port = 3;
+}
+
+
+// 각 노드에게 노드의 변경 정보 알려줌
+service NotifyNode{
+  rpc NotifyNodeChanged (NodeType) returns (HealthReply) {}
+}
+// 해당 노드에게
+// predecessor, successor, double_successor 값을
+// NodeType와 같이 바꾸라고 알림
+
+message NodeType{
+  string node_id = 1;
+  string node_host = 2;
+  string node_port = 3;
+  uint32 which_node = 4;
+  // 0=predecessor, 1=successor, 2=double_successor
+}
+
+
+// 노드에게 메시지 전송
+service TossMessage{
+  rpc TM (Message) returns (HealthReply) {}
+}
+
+message Message{
+  string node_id = 1;       // 최초 발신자 id
+  string node_host = 2;     // 최초 발신자 host
+  string node_port = 3;     // 최초 발신자 port
+  uint32 message_type = 4;  // 메시지 타입
+  // 현재 정의된 message
+  // 1 이면, Network에 join하는 것으로 판단
+  // 만약, host < node_host < host.successor.host 일 경우,
+  // 해당 host의 successor로 node 등록
 }
