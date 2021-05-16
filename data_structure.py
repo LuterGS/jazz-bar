@@ -62,29 +62,3 @@ class TableEntry:
             self.entries.sort()
         else:
             raise ValueError('concat_type = "trailing" or "leading" or "sort"')
-
-
-# for testing
-
-# if __name__ == '__main__':
-#     d1 = Data('a', 'd1')
-#     d2 = Data('c', 'd2')
-#     d3 = Data('e', 'd3')
-#     d4 = Data('g', 'd4')
-#     d5 = Data('i', 'd5')
-#     d6 = Data('k', 'd6')
-#     d7 = Data('m', 'd7')
-#
-#     table = TableEntry([d1, d2, d3, d4, d5, d6, d7])
-#     table.summary()
-#     print(str(table.get('a')))
-#     table.set('b', 'd8')
-#     table.set('c', 'd9')
-#     table.delete('k')
-#     table.summary()
-#
-#     d10 = Data('f', 'd10')
-#     d11 = Data('j', 'd11')
-#     d12 = Data('l', 'd12')
-#     table.concat([d10, d11, d12])
-#     table.summary()
