@@ -1,6 +1,5 @@
 import logging
 import time
-from copy import copy
 
 from data_structure import TableEntry, Data
 from service import request_node_info, node_health_check, notify_node_info
@@ -41,6 +40,7 @@ class NodeTable:
         self.change_node_table = [self.change_successor, self.change_double_successor]
 
     def log_nodes(self):
+        # TODO : TableEntry 클래스의 summary 를 이용해서 처리할 수 있지 않을까?
         # predecessor를 별도로 관리하기 때문에, predecessor는 따로 로그를 찍어주고
         logging.info(f'showing data table entry...')
         print(f'current predecessor is {self.predecessor.key[:10]}:{self.predecessor.value}')

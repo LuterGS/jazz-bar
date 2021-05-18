@@ -61,3 +61,19 @@ message Message{
   // 만약, host < node_host < host.successor.host 일 경우,
   // 해당 host의 successor로 node 등록
 }
+
+
+
+// Get, Set, Disjoin시 Set 시, Node 에게 정보를 보내는 부분
+// 보내고 만약 요청을 처리해야 하는 노드면 별도로 요청을 처리하고, 아니면 그냥 잘 처리했다는 HealthReply
+service HandleData{
+  rpc GD (StarterWithData) returns (HealthReply) {}
+}
+
+message StarterWithData{
+  string node_key= 1;             // 처음 요청을 생성한 node 의 key
+  string node_address = 2;        // 처음 요청을 생성한 node 의 address
+  string data_key = 3;            // node 가 요청한 data 의 key
+  string data_value = 4;          // node 가 요청한 data 의 value (값이 없을 수 있음)
+  uint32 data_handling_type = 5;  // 요청 type (1은 get, 2는 set, 3은 get 결과)
+}

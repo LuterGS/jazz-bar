@@ -3,10 +3,10 @@ from typing import Tuple
 import grpc
 import threading
 import logging
-from copy import copy
-from data_structure import Data
+from data_structure import Data, TableEntry
 from utils import NodeType as n
 from utils import TossMessageType as t
+from utils import DataHandlingType as d
 
 from grpc._channel import _InactiveRpcError
 
@@ -58,6 +58,27 @@ def toss_message(starter_node: Data, receive_node: Data, message_type: int) -> i
         stub = chord_pb2_grpc.TossMessageStub(channel)
         response = stub.TM(chord_pb2.Message(
             node_key=starter_node.key, node_address=starter_node.value, message_type=message_type
+        ))
+    return response.pong
+
+
+def data_request(starter_node: Data, receive_node: Data, data: Data, data_handling_type: int) -> int:
+    """
+    chord.proto 의 HandleData 요청을 보내는 메소드
+    :param starter_node: 처음 요청을 생성하는 노드, 함수를 호출할 시에는 호출한 노드를 넣는 것이 맞음
+    :param receive_node: 요청을 받는 노드, 현재는 모두 chord_node 의 successor 를 할당했으나, 추후에 finger table 이 구현되면 달라질 수 있음
+    :param data: 요청하는 데이터. get 이나 remove 시 value 는 비어도 됨
+    :param data_handling_type: utils.DataHandlingType 의 명세를 따름 (단, get_result 를 호출해서 사용할 필요는 없으니 사용하지 않아도 됨
+            -> 자세한건 186번째 HandleDataService 클래스 참고할 것
+    :return: receive_node 가 값을 잘 처리했으면 0이 return 됨
+    """
+    # data_handling_type 는 utils.DataHandlingType 의 명세를 따름
+    with grpc.insecure_channel(receive_node.value) as channel:
+        stub = chord_pb2_grpc.HandleDataStub(channel)
+        response = stub.GD(chord_pb2.StarterWithData(
+            node_key=starter_node.key, node_address=starter_node.value,
+            data_key=data.key, data_value=data.value,
+            data_handling_type=data_handling_type
         ))
     return response.pong
 
@@ -161,3 +182,72 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                 # threading.Thread(target=toss_message,
                 #                  args=(Data(request.node_key, request.node_address), send_node,))
             return chord_pb2.HealthReply(pong=0)
+
+
+class HandleDataService(chord_pb2_grpc.HandleDataServicer):
+    def __init__(self, node_table, data_table: TableEntry):
+        self.node_table = node_table
+        self.data_table = data_table
+
+    def get(self, starter_node: Data, req_data: Data):
+        i = 0       # 의미없는 구문, 제거해도 됨
+        """
+        자신이 처리해야 할 get 요청을 처리하는 메소드이다.
+        key 를 토대로 value 를 찾는다.
+        
+        try:
+            value = self.data_table.get(req_data.key)
+        except ValueError:
+            value = ""          -> gRPC 통신 상에 오류가 날 수 있으며, 오류날 시에는 특정 문자로 교체한 뒤 아래 GD의 get_result 부분도 수정해줄 것
+        finally:
+            # 이후, 이 값을 starter node 에게 다시 전달해준다.
+            -> 스레드로 data_request 함수를 실행하되, 이 때 starter node 는 본인의 노드, receive_node 가 starter node, data 는 찾은 값을 넣어준다.
+        """
+        pass
+
+
+
+    def GD(self, request, context):
+        job_type = request.data_handling_type
+        starter_node = Data(request.node_key, request.node_address)
+        data = Data(request.data_key, request.data_value)
+        '''
+        최우선적으로, 만약 job_type 가 get_result 다?
+        그러면 get 에 대한 결과를 받은 것이므로, 결과를 출력해준다.
+        -> 이 때, starter node 는 해당 data 를 가지고 있는 node 이다.
+        if job_type == d.get_result:
+            if data.value == "": data.value = "not found"
+            logging.info(f'request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.key[:10]}:{starter_node.value}')
+            return chord_pb2.HealthReply(pong=0)
+        '''
+
+
+        """
+        일단, data 의 key 를 보고, 자신의 Data Table 에 접근하는 요청인지 파악한다.
+        어떻게? -> 본인의 node key 보다 data key 가 크거나 같고, successor 의 node key 보다 작으면 자신이 처리해야 한다.
+                !! 예외처리 : 본인의 successor 가 본인보다 key 값이 작을 때 (본인이 dht 에서 가장 큰 값일 때)
+                    -> if문 안에 조건처리를 한 번 더 해야함.
+                    
+        만약 본인이 처리해야 하면, job_type 에 따라 get, 혹은 set 을 실행한다.
+        if job_type == d.get:
+            self.get(starter_node, data)        # -> 스레드 실행은 자유
+        if job_type == d.set:
+            self.data_table.set(data)           # -> 스레드 실행 X
+        if job_type == d.remove:
+            self.data_table.delete(data.key)    # -> 스레드 실행 X
+            
+        
+                    
+        만약, 본인이 가지고 있지 않으면, successor 에게 그대로 정보를 전달한다.
+        단, 스레드 처리를 해서 넘긴다. 이 파일의 168번째에 선언되는 Thread 와 비슷하게 
+        대충 쓰면, 이렇게 처리할 수 있다.
+        threading.Thread(
+            target=data_request, 
+            args=(
+                starter_node, 
+                self.node_table.finger_table.entries[0], 
+                data,
+                job_type)
+        ).start()
+        """
+        pass

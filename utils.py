@@ -27,8 +27,27 @@ class _TossMessageType(object):
         return 1
 
 
+class _DataHandlingType(object):
+    @constant
+    def get(self):
+        return 1
+
+    @constant
+    def set(self):
+        return 2
+
+    @constant
+    def remove(self):
+        return 3
+
+    @constant
+    def get_result(self):
+        return 4
+
+
 NodeType = _NodeType()
 TossMessageType = _TossMessageType()
+DataHandlingType = _DataHandlingType()
 
 HASH_BIT_LENGTH = 32
 hasher = hashlib.sha1()

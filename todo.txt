@@ -1,0 +1,46 @@
+해야할 일.
+
+1. service.py 의 맨 마지막에 있는 class HandleDataService 완성할 것
+2. chord_node.py 의 get, set, remove, disjoin 구현할 것
+
+data table 저장 방식 (주석과 예시코드 모두 해당 방법을 토대로 달았으며, 언제든지 변경 가능함)
+내 key 보다 크거나 같으면서, successor 의 key 보다 작을 때, 해당 data 는 나에게 저장됨.
+
+
+gRPC chord.proto 69번째 줄부터 서술한 명세 확인할 것.
+HandleData라는 규격이 있으며, StarterWithData를 전송하고, 받은 쪽에서 HealthReply를 보낸다.
+StarterWithData 는, 주석에 설명된 대로,
+처음에 요청을 생성한 node의 정보와, node가 요청한 Data, 요청 type를 가지고 있다.
+요청 type는 utils.DataHandlingType 에 get, set, remove, get_result로 정의되어 있다.
+
+1. get 일 경우에는, data의 value가 ""이 된다 (만약 오류가 날 시에는 다른 문자로 바꾸고 그에 따른 예외처리도 해줄 것)
+2. set 일 경우에는, 모든 값이 채워져 있다.
+3. remove 일 경우에는 get인 경우와 같다.
+4. get_result는 만약 본인의 Table에 data가 있을 때, 처음에 요청을 생성한 node에게 메시지를 전송할 때 사용하는 규격이다.
+
+
+class HandleDataService 를 보자 (service.py 의 맨 아래에 있음)
+해당 class는 HandleData의 메시지를 받아서 처리하는 클래스이며, 실제 작동 시에는 상시 메시지 입력받기를 대가하다가, 입력받으면 메시지 명세에 따른 함수를 실행한다.
+(현재는 GD밖에 실행할 게 없다)
+
+GD는 HandleData 에 정의된 단 하나의 규격이며, 위에서 설명한 5개의 정보가 온다.
+처리 규칙으로, 본인이 처리해아 한다면, 그에 맞는 함수를 실행하고, 처리할 필요가 없으면, "스레드로" 본인의 successor에게 요청을 넘기고, 현재 온 요청에 pong으로 응답한다.
+
+
+service.py 의 65번째 줄에 있는 data_request는 메시지를 생성하고 보내는 함수이다.
+입력값으로 starter_node, receive_node, data, data_handling_type를 받는다.
+starter_node는, 메시지 규격의 처음에 요청을 생성한 node 이며,
+receive_node는, 메시지를 전달받을 노드이고,
+data는 메시지 명세에 있는 data (get, remove같은 경우 data의 value는 상관없음)
+data_handling_type는 메시지 명세에 있는 메시지 타입이다.
+
+
+
+다시 해야할 일을 확인하면
+1. service.py 의 맨 마지막에 있는 class HandleDataService 완성할 것
+    -> 주석이랑 설명 보고 처리하면 됨
+2. chord_node.py 의 get, set, remove, disjoin 구현할 것
+    -> 주석 써놓은거 보고 처리하면 됨
+
+
+화이팅입니다!

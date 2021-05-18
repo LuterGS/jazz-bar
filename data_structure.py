@@ -31,9 +31,10 @@ class Data:
     def update_info(self, data, loc: int):
         key = data.key
         value = data.value
-        logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
-        with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
-            self.__init__(key, value)
+        self.update_info(key, value, loc)       # 에러 날 시 밑부분 주석 제거하고, 이 부분 주석처리할것.
+        # logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
+        # with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
+        #     self.__init__(key, value)
 
     # Warning : update_info 사용 시, update_info(ids=val, address=val, loc=3) <- 이런 식으로 사용하지 말 것!
     # multidispatch 사용법이 익숙치 않아 해당 기능 구현 안됨
@@ -71,6 +72,7 @@ class TableEntry:
     def get(self, key):
         return self.entries[self.index(key)]
 
+    @dispatch(str, str)
     def set(self, key, value):
         try:
             location = self.index(key)
@@ -78,6 +80,12 @@ class TableEntry:
             # 기존 값을 교체할 때, race_condition safe 하기 위해 이렇게 처리
         except ValueError:
             bisect.insort(self.entries, Data(key, value))
+
+    @dispatch(object)
+    def set(self, data):
+        key = data.key
+        value = data.value
+        self.set(key, value)    # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
 
     def delete(self, key):
         self.entries.pop(self.index(key))
