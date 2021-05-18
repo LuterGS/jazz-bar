@@ -29,6 +29,7 @@ class ChordNode:
     def __init__(self, address):
         self.server = None
         self.address = address
+        # node table을 만들었으며, node table 내에서 모든 연결이 일어남.
         self.node_table = NodeTable(generate_hash(self.address), self.address)
         self.serve()
 
@@ -49,6 +50,8 @@ class ChordNode:
             pass
         elif commands[0] == 'join':
             self.join_cluster(commands[1])
+        elif commands[0] == 'show':         # 노드 테이블 정보 출력하는 기능 추가
+            self.node_table.log_nodes()
 
     def listen_command(self):
         try:

@@ -22,7 +22,7 @@ service GetNodeValue{
 
 message NodeDetail{
   string node_address = 1;
-  uint32 which_node = 2;
+  int32 which_node = 2;
 }
 
 message NodeVal{
@@ -42,7 +42,7 @@ service NotifyNode{
 message NodeType{
   string node_key = 1;
   string node_address = 2;
-  uint32 change_type = 3;
+  int32 which_node = 3;
   // 0=predecessor, 1=successor, 2=double_successor
 }
 

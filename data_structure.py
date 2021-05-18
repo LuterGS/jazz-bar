@@ -5,8 +5,10 @@ from typing import List
 from multipledispatch import dispatch
 
 class Data:
+    # 기존의 Node를 Data로 합침 (어차피 DHT에서 모든 값은 key-value로 저장되기 때문에, 이런 방식을 택함)
+    lock = Lock()  # 여러 스레드에서 접근할 수 있기 때문에 mutex lock선언
+
     def __init__(self, key, value):
-        self.lock = Lock()
         self.key = key
         self.value = value
 
@@ -19,10 +21,10 @@ class Data:
     def __str__(self):
         return f'Key: {self.key}, Value: {self.value}'
 
-    @dispatch(str, str, int)
+    @dispatch(str, str, int)        # -> 메소드 오버로딩
     def update_info(self, ids, address, loc: int):
         logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {ids[:10]}:{address}')
-        with self.lock:
+        with self.lock:     # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
             self.__init__(ids, address)
 
     @dispatch(object, int)
@@ -33,7 +35,9 @@ class Data:
         with self.lock:
             self.__init__(ids, address)
 
-
+    # Warning : update_info 사용 시, update_info(ids=val, address=val, loc=3) <- 이런 식으로 사용하지 말 것!
+    # multidispatch 사용법이 익숙치 않아 해당 기능 구현 안됨
+    # 반드시 update_info(ids, address, loc) 혹은 update_info(node, loc) 이렇게 사용할 것!
 
 
 class TableEntry:
@@ -67,23 +71,11 @@ class TableEntry:
 
     def set(self, key, value):
         try:
-            self.entries[self.index(key)] = Data(key, value)
+            location = self.index(key)
+            self.entries[location].update_info(key, value, location)
+            # 기존 값을 교체할 때, race_condition safe 하기 위해 이렇게 처리
         except ValueError:
             bisect.insort(self.entries, Data(key, value))
-
-    # @dispatch(str, str, str)
-    # def update_info(self, id, host, port):
-    #     with self.lock:
-    #         logging.info(f'{self.name} is updated, {self.id[:10]}:{self.get_address()} to {id[:10]}:{host}:{port}')
-    #         self.__init__(id, host, port, self.name)
-    #
-    # @dispatch(object)
-    # def update_info(self, node):
-    #     ids = node.id
-    #     host = node.host
-    #     port = node.port
-    #     with self.lock:
-    #         logging.info(f'{self.name} is updated, {self.id[:10]}:{self.get_address()} to {id[:10]}:{host}:{port}')
 
     def delete(self, key):
         self.entries.pop(self.index(key))
