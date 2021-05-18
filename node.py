@@ -1,24 +1,20 @@
 import grpc
-from grpc._channel import _InactiveRpcError
 import threading
 import logging
 from concurrent import futures
 
 from node_table import NodeTable
-from service import HealthCheckService, GetNodeValueService, NotifyNodeService, TossMessageService, node_health_check, notify_node_info, request_node_info, toss_message
-from data_structure import Node
+from service import HealthCheckService, GetNodeValueService, NotifyNodeService, TossMessageService, toss_message
+from data_structure import Data
 
-from data_structure import TableEntry
-
+from utils import TossMessageType as t
 from utils import generate_hash
 
 from protos.output import chord_pb2
 from protos.output import chord_pb2_grpc
 
-import time
 
-
-class ChordNode(Node):
+class ChordNode:
     """
     id : int
     host : string
@@ -29,20 +25,17 @@ class ChordNode(Node):
     해당 class는 자동 정렬 기능이 있는 list를 담고 있음
     predecessor: Node
     """
-    def __init__(self, host, port):
-        ids = generate_hash(host, port)
-        super().__init__(ids, host, port, "cur_node")
-        self.server = None
 
-        self.node_table = NodeTable(ids, host, port)
+    def __init__(self, address):
+        self.server = None
+        self.address = address
+        self.node_table = NodeTable(generate_hash(self.address), self.address)
         self.serve()
 
     # TODO : join 함수 구현 (우선순위 높음)
     def join_cluster(self, join_address):
-        join_address = join_address.split(":")
-        new_node = Node("will replaced", join_address[0], join_address[1])
-        toss_message(self, new_node, 1)
-
+        new_node = Data("will replaced", join_address)
+        toss_message(self.node_table.cur_node, new_node, t.join_node)
 
     # TODO : Get/Set/Remove/Join에 대한 핸들링 추가 및 프로토콜 결정 (우선순위 높음)
     def command_handler(self, command):
@@ -66,8 +59,6 @@ class ChordNode(Node):
             print('Terminated By User')
             self.server.stop(0)
 
-
-
     def serve(self):
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
@@ -77,11 +68,10 @@ class ChordNode(Node):
         chord_pb2_grpc.add_NotifyNodeServicer_to_server(NotifyNodeService(self.node_table), self.server)
         chord_pb2_grpc.add_TossMessageServicer_to_server(TossMessageService(self.node_table), self.server)
 
-        address = self.host+":"+self.port
-        self.server.add_insecure_port(address)
+        self.server.add_insecure_port(self.address)
         self.server.start()
 
-        logging.info(f'ChordServer is listening on {self.host}:{self.port}')
+        logging.info(f'ChordServer is listening on {self.address}')
         # self.server.wait_for_termination()
 
         # 기능 시작 (thread 구분)
@@ -89,5 +79,3 @@ class ChordNode(Node):
         health_check = threading.Thread(target=self.node_table.health_check)
         command_listener.start()
         health_check.start()
-
-

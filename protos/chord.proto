@@ -21,14 +21,13 @@ service GetNodeValue{
 }
 
 message NodeDetail{
-  string node_id = 1;
+  string node_address = 1;
   uint32 which_node = 2;
 }
 
 message NodeVal{
-  string node_id = 1;
-  string node_host = 2;
-  string node_port = 3;
+  string node_key = 1;
+  string node_address = 2;
 }
 
 
@@ -41,10 +40,9 @@ service NotifyNode{
 // NodeType와 같이 바꾸라고 알림
 
 message NodeType{
-  string node_id = 1;
-  string node_host = 2;
-  string node_port = 3;
-  uint32 which_node = 4;
+  string node_key = 1;
+  string node_address = 2;
+  uint32 change_type = 3;
   // 0=predecessor, 1=successor, 2=double_successor
 }
 
@@ -55,10 +53,9 @@ service TossMessage{
 }
 
 message Message{
-  string node_id = 1;       // 최초 발신자 id
-  string node_host = 2;     // 최초 발신자 host
-  string node_port = 3;     // 최초 발신자 port
-  uint32 message_type = 4;  // 메시지 타입
+  string node_key = 1;       // 최초 발신자 id
+  string node_address = 2;     // 최초 발신자 address
+  uint32 message_type = 3;  // 메시지 타입
   // 현재 정의된 message
   // 1 이면, Network에 join하는 것으로 판단
   // 만약, host < node_host < host.successor.host 일 경우,

@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from . import chord_pb2 as chord__pb2
+from protos.output import chord_pb2 as chord__pb2
 
 
 class HealthCheckerStub(object):
@@ -11,6 +11,7 @@ class HealthCheckerStub(object):
 
     def __init__(self, channel):
         """Constructor.
+
         Args:
             channel: A grpc.Channel.
         """
@@ -74,6 +75,7 @@ class GetNodeValueStub(object):
 
     def __init__(self, channel):
         """Constructor.
+
         Args:
             channel: A grpc.Channel.
         """
@@ -137,6 +139,7 @@ class NotifyNodeStub(object):
 
     def __init__(self, channel):
         """Constructor.
+
         Args:
             channel: A grpc.Channel.
         """
@@ -200,6 +203,7 @@ class TossMessageStub(object):
 
     def __init__(self, channel):
         """Constructor.
+
         Args:
             channel: A grpc.Channel.
         """
