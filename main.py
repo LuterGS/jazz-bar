@@ -1,4 +1,4 @@
-from node import ChordNode
+from chord_node import ChordNode
 import logging
 import argparse
 
@@ -28,4 +28,4 @@ if __name__ == '__main__':
     init_logger()
     parser = init_parser()
     args = parser.parse_args()
-    node = ChordNode(args.host, args.port)
+    node = ChordNode(args.host + ":" + args.port)

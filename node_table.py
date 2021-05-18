@@ -1,87 +1,87 @@
 import logging
 import time
-from concurrent import futures
-from collections import deque
+from copy import copy
 
-import grpc
-
-from data_structure import Node
-from service import notify_node_info, request_node_info, node_health_check
-from utils import generate_hash
+from data_structure import TableEntry, Data
+from service import request_node_info, node_health_check, notify_node_info
 from utils import NodeType as n
+
 
 
 class NodeTable:
 
-    def __init__(self, ids, host, port):
+    def __init__(self, ids, address: str):
         # generate node table
-        self.cur_node = Node(ids, host, port)
+        host, port = address.split(":")
 
-        self.node_table = []
-        self.for_log = ["predecessor", "successor", "double_successor"]
-        for i in range(3):
-            self.node_table.append(Node(ids, host, port, self.for_log[i]))
+        # 현재 본인의 노드 정보와, predecessor 는 finger table에 없지만 필요하므로 별도로 선언함
+        self.cur_node = Data(ids, address)
+
+
+        # TODO : finger table은 key값에 상관없는 순서 보장이 필요함. 그래서 다른 방식의 저장이 필요하다고 생각됨.
+        self.finger_table = TableEntry()
+
+        # TODO : finger table은 중복이 되지 않지만, 초기 node init시에는 중복이 되어야 함.
         if port == "50051":
-            self.node_table[0] = Node("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host, "50054", "predecessor")
-            self.node_table[1] = Node("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host, "50054", "successor")
-        if port == "50054":
-            self.node_table[0] = Node("a09b0ce42948043810a1f2cc7e7079aec7582f29", host, "50051", "predecessor")
-            self.node_table[1] = Node("a09b0ce42948043810a1f2cc7e7079aec7582f29", host, "50051", "successor")
-
-        self.health_check_status = [True, True, True]
-        self.change_node_table = [self.change_predecessor, self.change_successor, self.change_double_successor]
-
-        # for iteration
-        self.cur_index = 0
-        self.len_table = len(self.node_table)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        try:
-            self.cur_index += 1
-            return self.node_table[self.cur_index - 1]
-        except IndexError:
-            self.cur_index = 0
-            raise StopIteration
-
-    def __getitem__(self, item):
-        return self.node_table[item]
-
-    def __len__(self):
-        return self.len_table
+            self.predecessor = Data("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
+            self.finger_table.set("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
+            self.finger_table.entries.append(Data(ids, address))
+            # self.finger_table.set("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054") -> 사용 안됨!
+        elif port == "50054":
+            self.predecessor = Data("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
+            self.finger_table.set("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
+            self.finger_table.entries.append(Data(ids, address))
+            # self.finger_table.set("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
+        else:
+            self.predecessor = Data(ids, address)
+            self.finger_table.set(ids, address)                      # 0 - successor
+            self.finger_table.entries.append(Data(ids, address))     # 1 - double successor
+            # self.finger_table.set(ids, address)   # -> 사용 안됨!
+        self.health_check_status = [True for _ in range(len(self.finger_table.entries))]
+        self.change_node_table = [self.change_successor, self.change_double_successor]
 
     def log_nodes(self):
-        for node in self.node_table:
-            logging.info(f'current {node.name} : {node.id[:10]}:{node.get_address()}')
+        # predecessor를 별도로 관리하기 때문에, predecessor는 따로 로그를 찍어주고
+        logging.info(f'showing data table entry...')
+        print(f'current predecessor is {self.predecessor.key[:10]}:{self.predecessor.value}')
+
+        # 이후에 finger table 값들을 출력함
+        for i, node in enumerate(self.finger_table.entries):
+            print(f'current finger_table[{i}] is {node.key[:10]}:{node.value}')
         print()
-
-
-    def change_predecessor(self, active: bool):
-        if not active:
-            pass
 
     def change_successor(self, active: bool):
         if not active:
-            logging.info(f'successor:{self.node_table[n.successor].get_address()} is out of connection, change to {self.node_table[n.double_successor].get_address()}')
-            self.node_table[n.successor].update_info(
-                self.node_table[n.double_successor].id,
-                self.node_table[n.double_successor].host,
-                self.node_table[n.double_successor].port
-            )
+            cur_successor = self.finger_table.entries[0]
+            cur_double_successor = self.finger_table.entries[1]
+            logging.info(f'successor {cur_successor.key[:10]}:{cur_successor.value} is out of connection, change to {cur_double_successor.key[:10]}:{cur_double_successor.value}')
 
-            notify_node_info(self.cur_node, self.node_table[n.successor], n.predecessor)
+            # successor 가 out of connection 이면,
 
-            d_id, d_host, d_port = request_node_info(self.node_table[n.successor], n.successor)
-            self.node_table[n.double_successor].update_info(d_id, d_host, d_port)
+            # 1. double_successor 에게 successor를 가져옴
+            d_key, d_address = request_node_info(cur_double_successor, n.finger_table(0))
+
+            # 2. 현재 노드의 successor를 double successor로 교체
+            self.finger_table.entries[0].update_info(cur_double_successor.key, cur_double_successor.value, 0)
+
+            # 3. 현재 노드의 double_successor를 double successor에게 받아온 정보로 교체
+            self.finger_table.entries[1].update_info(d_key, d_address, 1)
+
+            # 4. 새로 바뀐 successor에게, 본인이 predecessor라는 것을 알려줌
+            notify_node_info(self.finger_table.entries[0], self.cur_node, n.predecessor)
 
     def change_double_successor(self, active: bool):
         if not active:
-            logging.info(f"double successor:{self.node_table[n.double_successor].get_address()} is out of connection")
-            d_id, d_host, d_port = request_node_info(self.node_table[n.successor], n.double_successor)
-            self.node_table[n.double_successor].update_info(d_id, d_host, d_port)
+            cur_double_successor = self.finger_table.entries[1]
+            logging.info(f"double successor {cur_double_successor.key[:10]}:{cur_double_successor.value} is out of connection")
 
+            # double successor가 out of connection 이면,
+
+            # 1. successor의 double_successor 정보를 받아옴
+            d_key, d_address = request_node_info(self.finger_table.entries[0], n.finger_table(0))
+
+            # 2. 받아온 정보를 현재 노드의 double successor에 저장
+            self.finger_table.entries[1].update_info(d_key, d_address, 1)
 
     def health_check(self):
         self.log_nodes()
@@ -89,12 +89,11 @@ class NodeTable:
 
             time.sleep(3)
 
-            for i in range(3):
-                self.health_check_status[i] = node_health_check(self.node_table[i])
+            for i in range(2):
+                self.health_check_status[i] = node_health_check(self.finger_table.entries[i])
 
-            for i in range(3):
+            for i in range(2):
                 self.change_node_table[i](self.health_check_status[i])
 
-            if sum(self.health_check_status) != 3:
+            if sum(self.health_check_status) != 2:
                 self.log_nodes()
-

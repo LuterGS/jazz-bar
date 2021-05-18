@@ -15,15 +15,10 @@ def constant(func):
 class _NodeType(object):
     @constant
     def predecessor(self):
-        return 0
+        return -1
 
-    @constant
-    def successor(self):
-        return 1
-
-    @constant
-    def double_successor(self):
-        return 2
+    def finger_table(self, i):
+        return i
 
 
 class _TossMessageType(object):
@@ -39,10 +34,8 @@ HASH_BIT_LENGTH = 32
 hasher = hashlib.sha1()
 
 
-# TODO: Host와 Port가 주어졌을 때 SHA1 기반의 해시 함수로 ID 생성 (우선순위 높음)
-def generate_hash(host, port):
-    address = f'{host}:{port}'.encode()
-    hasher.update(address)
+def generate_hash(address: str):
+    hasher.update(address.encode())
     return hasher.hexdigest()
 
 
