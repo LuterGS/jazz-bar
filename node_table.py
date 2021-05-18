@@ -43,11 +43,10 @@ class NodeTable:
     def log_nodes(self):
         # predecessor를 별도로 관리하기 때문에, predecessor는 따로 로그를 찍어주고
         logging.info(f'current predecessor is {self.predecessor.key[:10]}:{self.predecessor.value}')
-        i = 0
+
         # 이후에 finger table 값들을 출력함
-        for node in self.finger_table.entries:
+        for i, node in enumerate(self.finger_table.entries):
             logging.info(f'current finger_table[{i}] is {node.key[:10]}:{node.value}')
-            i += 1
         print()
 
     def change_successor(self, active: bool):
