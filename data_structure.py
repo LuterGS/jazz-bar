@@ -56,9 +56,11 @@ class TableEntry:
         self.entries.sort()
 
     def summary(self):
+        logging.info(f'showing table entry... ')
         print(f'Number of Entries: {len(self.entries)}')
         for i, entry in enumerate(self.entries):
             print(i, str(entry))
+        print()
 
     def index(self, key):
         i = bisect.bisect_left(self.entries, Data(key, 'dummy'))

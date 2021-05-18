@@ -52,6 +52,8 @@ class ChordNode:
             self.join_cluster(commands[1])
         elif commands[0] == 'show':         # 노드 테이블 정보 출력하는 기능 추가
             self.node_table.log_nodes()
+        elif commands[0] == 'summary':
+            self.node_table.finger_table.summary()
 
     def listen_command(self):
         try:
