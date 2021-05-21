@@ -4,6 +4,7 @@ import bisect
 from typing import List
 from multipledispatch import dispatch
 
+
 class Data:
     # 기존의 Node를 Data로 합침 (어차피 DHT에서 모든 값은 key-value로 저장되기 때문에, 이런 방식을 택함)
     lock = Lock()  # 여러 스레드에서 접근할 수 있기 때문에 mutex lock선언
@@ -21,17 +22,17 @@ class Data:
     def __str__(self):
         return f'Key: {self.key}, Value: {self.value}'
 
-    @dispatch(str, str, int)        # -> 메소드 오버로딩
+    @dispatch(str, str, int)  # -> 메소드 오버로딩
     def update_info(self, key, value, loc: int):
         logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
-        with self.lock:     # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
+        with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
             self.__init__(key, value)
 
     @dispatch(object, int)
     def update_info(self, data, loc: int):
         key = data.key
         value = data.value
-        self.update_info(key, value, loc)       # 에러 날 시 밑부분 주석 제거하고, 이 부분 주석처리할것.
+        self.update_info(key, value, loc)  # 에러 날 시 밑부분 주석 제거하고, 이 부분 주석처리할것.
         # logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
         # with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
         #     self.__init__(key, value)
@@ -52,7 +53,8 @@ class TableEntry:
     4. concat: Data object list를 기존의 list에 합침. (disjoin하는 Node의 데이터를 받아올때 필요할거 같음)
     """
 
-    def __init__(self, entries: List[Data] = list()):
+    def __init__(self):
+        entries: List[Data] = list()
         self.entries = entries
         self.entries.sort()
 
@@ -85,7 +87,7 @@ class TableEntry:
     def set(self, data):
         key = data.key
         value = data.value
-        self.set(key, value)    # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
+        self.set(key, value)  # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
 
     def delete(self, key):
         self.entries.pop(self.index(key))

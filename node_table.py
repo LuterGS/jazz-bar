@@ -28,9 +28,12 @@ class NodeTable:
             # self.finger_table.set("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054") -> 사용 안됨!
         elif port == "50054":
             self.predecessor = Data("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
-            self.finger_table.set("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
-            self.finger_table.entries.append(Data(ids, address))
-            # self.finger_table.set("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
+            self.finger_table.set("t1", "t2")
+            self.finger_table.set("t2", "t1")
+            self.finger_table.entries[0].update_info(self.predecessor, 0)
+            self.finger_table.entries[1].update_info(self.cur_node, 1)
+            # self.log_nodes()
+            # print(self.finger_table.index("a09b0ce42948043810a1f2cc7e7079aec7582f29"))
         else:
             self.predecessor = Data(ids, address)
             self.finger_table.set(ids, address)                      # 0 - successor
