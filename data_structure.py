@@ -33,7 +33,7 @@ class Data:
         key = data.key
         value = data.value
         self.update_info(key, value, loc)  # 에러 날 시 밑부분 주석 제거하고, 이 부분 주석처리할것.
-        # logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
+        logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
         # with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
         #     self.__init__(key, value)
 
