@@ -54,6 +54,7 @@ def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int
 
 def toss_message(starter_node: Data, receive_node: Data, message_type: int) -> int:
     # message_type 는 utils.TossMessageType 의 명세를 따름
+    print(starter_node.key, starter_node.value, message_type, receive_node.value)
     with grpc.insecure_channel(receive_node.value) as channel:
         stub = chord_pb2_grpc.TossMessageStub(channel)
         response = stub.TM(chord_pb2.Message(

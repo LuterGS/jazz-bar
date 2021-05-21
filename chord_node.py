@@ -66,8 +66,7 @@ class ChordNode:
             # data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(commands[1], ""), d.remove)
             pass
         elif commands[0] == 'join':
-            key_value = commands[1].split(":")
-            toss_message(self.node_table.cur_node, Data(key_value[0], key_value[1]), t.join_node)
+            toss_message(self.node_table.cur_node, Data("", commands[1]), t.join_node)
         elif commands[0] == 'disjoin':
             # predecessor 에게 모든 정보를 넘겨줄 수 있음 (set 을 여러번 사용하는 것이 현재로썬 베스트, 아닐 경우엔 별도 통신 규격을 만들어야 함)
             pass
