@@ -32,8 +32,6 @@ class NodeTable:
             self.finger_table.set("t2", "t1")
             self.finger_table.entries[0].update_info(self.predecessor, 0)
             self.finger_table.entries[1].update_info(self.cur_node, 1)
-            # self.log_nodes()
-            # print(self.finger_table.index("a09b0ce42948043810a1f2cc7e7079aec7582f29"))
         else:
             self.predecessor = Data(ids, address)
             self.finger_table.set(ids, address)                      # 0 - successor

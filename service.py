@@ -159,13 +159,14 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
             # 만약 join일 시, finger table 에서의 insert 위치를 찾아본다.
 
             # 1. 본인의 key값보다 크고, successor (finger_table[0]) 의 key 값보다 작은 경우는, 내가 추가한다.
-            if self.node_table.cur_node.key < request.node_address < self.node_table.finger_table.entries[0].key or \
+            if self.node_table.cur_node.key < request.node_key < self.node_table.finger_table.entries[0].key or \
                     self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < request.node_key:
                 logging.info(f'Now Adding {request.node_address}...')
                 self.notify_new_node_income(new_node=Data(request.node_key, request.node_address))
             # 2. 아닐 경우에는, 노드 테이블을 순회하면서 적절히 보낼 위치를 찾는다.
             # -> 일단 지금은, 바로 successor 에게 넘긴다. (finger table 의 속성을 변경하는 작업이 필요함)
             else:
+                logging.info(f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[0].value}')
                 threading.Thread(target=toss_message,
                                  args=(
                                      Data(request.node_key, request.node_address),
