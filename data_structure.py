@@ -90,7 +90,7 @@ class TableEntry:
         self.set(key, value)  # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
 
     def delete(self, key):
-        self.entries.pop(self.index(key))
+        return self.entries.pop(self.index(key))
 
     def concat(self, new_entries: List[Data], concat_type='sort'):
         if concat_type == 'trailing':

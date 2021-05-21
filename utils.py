@@ -37,7 +37,7 @@ class _DataHandlingType(object):
         return 2
 
     @constant
-    def remove(self):
+    def delete(self):
         return 3
 
     @constant
@@ -50,10 +50,10 @@ TossMessageType = _TossMessageType()
 DataHandlingType = _DataHandlingType()
 
 HASH_BIT_LENGTH = 32
-hasher = hashlib.sha1()
 
 
 def generate_hash(address: str):
+    hasher = hashlib.sha1()
     hasher.update(address.encode())
     return hasher.hexdigest()
 
