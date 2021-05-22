@@ -192,64 +192,48 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
         self.data_table = data_table
 
     def get(self, starter_node: Data, req_data: Data):
-        i = 0       # 의미없는 구문, 제거해도 됨
-        """
-        자신이 처리해야 할 get 요청을 처리하는 메소드이다.
-        key 를 토대로 value 를 찾는다.
-        
         try:
-            value = self.data_table.get(req_data.key)
+            value = self.data_table.get(req_data.key).value
         except ValueError:
-            value = ""          -> gRPC 통신 상에 오류가 날 수 있으며, 오류날 시에는 특정 문자로 교체한 뒤 아래 GD의 get_result 부분도 수정해줄 것
-        finally:
-            # 이후, 이 값을 starter node 에게 다시 전달해준다.
-            -> 스레드로 data_request 함수를 실행하되, 이 때 starter node 는 본인의 노드, receive_node 가 starter node, data 는 찾은 값을 넣어준다.
-        """
-        pass
+            value = ""
 
-
+        threading.Thread(
+            target=data_request,
+            args=(
+                self.node_table.cur_node,
+                starter_node,  # Finger Table 구현되면 수정 필요
+                Data(req_data.key, value),
+                d.get_result)
+        ).start()
 
     def GD(self, request, context):
         job_type = request.data_handling_type
         starter_node = Data(request.node_key, request.node_address)
         data = Data(request.data_key, request.data_value)
-        '''
-        최우선적으로, 만약 job_type 가 get_result 다?
-        그러면 get 에 대한 결과를 받은 것이므로, 결과를 출력해준다.
-        -> 이 때, starter node 는 해당 data 를 가지고 있는 node 이다.
+
         if job_type == d.get_result:
-            if data.value == "": data.value = "not found"
-            logging.info(f'request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.key[:10]}:{starter_node.value}')
-            return chord_pb2.HealthReply(pong=0)
-        '''
+            if data.value == "":
+                data.value = "not found"
+            logging.info(f"request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.value}")
 
+        elif self.node_table.cur_node.key < data.key < self.node_table.finger_table.entries[0].key or \
+                self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < data.key:
+            if job_type == d.get:
+                self.get(starter_node, data)
+            if job_type == d.set:
+                self.data_table.set(data)
+                logging.info(f"request key:{data.key[:10]}'s value is set to {data.value}, stored in {self.node_table.cur_node.value}")
+            if job_type == d.delete:
+                self.data_table.delete(data.key)
+                logging.info(f"request key:{data.key[:10]} is deleted from {self.node_table.cur_node.value}")
+        else:
+            threading.Thread(
+                target=data_request,
+                args=(
+                    starter_node,
+                    self.node_table.finger_table.entries[0],  # Finger Table 구현되면 수정 필요
+                    data,
+                    job_type)
+            ).start()
+        return chord_pb2.HealthReply(pong=0)
 
-        """
-        일단, data 의 key 를 보고, 자신의 Data Table 에 접근하는 요청인지 파악한다.
-        어떻게? -> 본인의 node key 보다 data key 가 크거나 같고, successor 의 node key 보다 작으면 자신이 처리해야 한다.
-                !! 예외처리 : 본인의 successor 가 본인보다 key 값이 작을 때 (본인이 dht 에서 가장 큰 값일 때)
-                    -> if문 안에 조건처리를 한 번 더 해야함.
-                    
-        만약 본인이 처리해야 하면, job_type 에 따라 get, 혹은 set 을 실행한다.
-        if job_type == d.get:
-            self.get(starter_node, data)        # -> 스레드 실행은 자유
-        if job_type == d.set:
-            self.data_table.set(data)           # -> 스레드 실행 X
-        if job_type == d.remove:
-            self.data_table.delete(data.key)    # -> 스레드 실행 X
-            
-        
-                    
-        만약, 본인이 가지고 있지 않으면, successor 에게 그대로 정보를 전달한다.
-        단, 스레드 처리를 해서 넘긴다. 이 파일의 168번째에 선언되는 Thread 와 비슷하게 
-        대충 쓰면, 이렇게 처리할 수 있다.
-        threading.Thread(
-            target=data_request, 
-            args=(
-                starter_node, 
-                self.node_table.finger_table.entries[0], 
-                data,
-                job_type)
-        ).start()
-        """
-        pass

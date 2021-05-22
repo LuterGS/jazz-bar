@@ -33,7 +33,7 @@ class Data:
         key = data.key
         value = data.value
         self.update_info(key, value, loc)  # 에러 날 시 밑부분 주석 제거하고, 이 부분 주석처리할것.
-        # logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
+        logging.info(f'finger_table[{loc}] is updated, {self.key[:10]}:{self.value} to {key[:10]}:{value}')
         # with self.lock:  # 값을 변경할 때, 동시 접근이 존재할수도 있으므로, mutex lock을 건 상태에서 진행
         #     self.__init__(key, value)
 
@@ -90,7 +90,7 @@ class TableEntry:
         self.set(key, value)  # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
 
     def delete(self, key):
-        self.entries.pop(self.index(key))
+        return self.entries.pop(self.index(key))
 
     def concat(self, new_entries: List[Data], concat_type='sort'):
         if concat_type == 'trailing':

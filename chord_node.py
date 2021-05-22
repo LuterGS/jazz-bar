@@ -1,6 +1,7 @@
 import grpc
 import threading
 import logging
+import time
 from concurrent import futures
 
 from node_table import NodeTable
@@ -44,36 +45,48 @@ class ChordNode:
         commands = command.split()
 
         if commands[0] == 'get':
-            # command 입력이
-            # get key 순으로 들어온다고 가정
-            # 먼저 본인에게 있는지 확인하고, 본인에게 있을 시 해당 값 출력
-            # 없을 시에는 하단 메소드를 참고, request 요청
-            # data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(commands[1], ""), d.get)
-            pass
+            key = commands[1]
+            try:
+                value = self.data_table.get(key)
+                logging.info(f"request key:{key[:10]}'s value is {value}, stored in {self.address}")
+            except ValueError:
+                data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(key, ""), d.get)
+
         elif commands[0] == 'set':
-            # command 입력이
-            # set key:value 순으로 들어온다고 가정
-            # 먼저 본인에게 있는지 확인하고, 본인에게 있을 시 해당 값 출력
-            # 없을 시에는 하단 메소드를 참고, request 요청
-            key_value = commands[1].split(":")
-            # data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(key_value[0], key_value[1]), d.set)
-            pass
-        elif commands[0] == 'remove':
-            # command 입력이
-            # remove key 순으로 들어온다고 가정
-            # 먼저 본인에게 있는지 확인하고, 본인에게 있을 시 해당 값 출력
-            # 없을 시에는 하단 메소드를 참고, request 요청
-            # data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(commands[1], ""), d.remove)
-            pass
+            key, value = commands[1].split(":")
+            key = generate_hash(key)
+            if self.node_table.cur_node.key < key < self.node_table.finger_table.entries[0].key or \
+                    self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < key:
+                self.data_table.set(key, value)
+                logging.info(f"request key:{key[:10]}'s value is set to {value}, stored in {self.address}")
+            else:
+                data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(key, value), d.set)
+
+        elif commands[0] == 'delete':
+            key = commands[1]
+            try:
+                self.data_table.delete(key)
+                logging.info(f"request key:{key[:10]} is deleted from {self.address}")
+            except ValueError:
+                data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(key, ""), d.delete)
+
         elif commands[0] == 'join':
             toss_message(self.node_table.cur_node, Data("", commands[1]), t.join_node)
+
         elif commands[0] == 'disjoin':
-            # predecessor 에게 모든 정보를 넘겨줄 수 있음 (set 을 여러번 사용하는 것이 현재로썬 베스트, 아닐 경우엔 별도 통신 규격을 만들어야 함)
-            pass
-        elif commands[0] == 'show':         # 노드 테이블 정보 출력하는 기능 추가
+            self.server = None  # HealthCheck를 못 받게 모든 서버 종료
+            logging.info('Waiting for other nodes to update their finger tables')
+            time.sleep(10)  # 다른 Node들이 FingerTable을 업데이트할때까지 대기
+            for entry in self.data_table.entries:
+                threading.Thread(
+                    target=data_request,
+                    args=(self.node_table.cur_node, self.node_table.predecessor, entry, d.set)).start()
+
+        elif commands[0] == 'show':  # 노드 테이블 정보 출력하는 기능 추가
             self.node_table.log_nodes()
+
         elif commands[0] == 'summary':
-            self.node_table.finger_table.summary()
+            self.data_table.summary()
 
     def listen_command(self):
         try:
@@ -92,7 +105,8 @@ class ChordNode:
         chord_pb2_grpc.add_GetNodeValueServicer_to_server(GetNodeValueService(self.node_table), self.server)
         chord_pb2_grpc.add_NotifyNodeServicer_to_server(NotifyNodeService(self.node_table), self.server)
         chord_pb2_grpc.add_TossMessageServicer_to_server(TossMessageService(self.node_table), self.server)
-        chord_pb2_grpc.add_HandleDataServicer_to_server(HandleDataService(self.node_table, self.data_table), self.server)
+        chord_pb2_grpc.add_HandleDataServicer_to_server(HandleDataService(self.node_table, self.data_table),
+                                                        self.server)
 
         self.server.add_insecure_port(self.address)
         self.server.start()
