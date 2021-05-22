@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0b\x63hord.proto\x12\x05\x63hord\"\x1b\n\x0bHealthCheck\x12\x0c\n\x04ping\x18\x01 \x01(\r\"\x1b\n\x0bHealthReply\x12\x0c\n\x04pong\x18\x01 \x01(\r\"6\n\nNodeDetail\x12\x14\n\x0cnode_address\x18\x01 \x01(\t\x12\x12\n\nwhich_node\x18\x02 \x01(\x05\"1\n\x07NodeVal\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\"F\n\x08NodeType\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x12\n\nwhich_node\x18\x03 \x01(\x05\"G\n\x07Message\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x14\n\x0cmessage_type\x18\x03 \x01(\r2B\n\rHealthChecker\x12\x31\n\x05\x43heck\x12\x12.chord.HealthCheck\x1a\x12.chord.HealthReply\"\x00\x32\x41\n\x0cGetNodeValue\x12\x31\n\nGetNodeVal\x12\x11.chord.NodeDetail\x1a\x0e.chord.NodeVal\"\x00\x32H\n\nNotifyNode\x12:\n\x11NotifyNodeChanged\x12\x0f.chord.NodeType\x1a\x12.chord.HealthReply\"\x00\x32\x39\n\x0bTossMessage\x12*\n\x02TM\x12\x0e.chord.Message\x1a\x12.chord.HealthReply\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0b\x63hord.proto\x12\x05\x63hord\"\x1b\n\x0bHealthCheck\x12\x0c\n\x04ping\x18\x01 \x01(\r\"\x1b\n\x0bHealthReply\x12\x0c\n\x04pong\x18\x01 \x01(\r\"6\n\nNodeDetail\x12\x14\n\x0cnode_address\x18\x01 \x01(\t\x12\x12\n\nwhich_node\x18\x02 \x01(\x05\"1\n\x07NodeVal\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\"F\n\x08NodeType\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x12\n\nwhich_node\x18\x03 \x01(\x05\"G\n\x07Message\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x14\n\x0cmessage_type\x18\x03 \x01(\r\"{\n\x0fStarterWithData\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x10\n\x08\x64\x61ta_key\x18\x03 \x01(\t\x12\x12\n\ndata_value\x18\x04 \x01(\t\x12\x1a\n\x12\x64\x61ta_handling_type\x18\x05 \x01(\r2B\n\rHealthChecker\x12\x31\n\x05\x43heck\x12\x12.chord.HealthCheck\x1a\x12.chord.HealthReply\"\x00\x32\x41\n\x0cGetNodeValue\x12\x31\n\nGetNodeVal\x12\x11.chord.NodeDetail\x1a\x0e.chord.NodeVal\"\x00\x32H\n\nNotifyNode\x12:\n\x11NotifyNodeChanged\x12\x0f.chord.NodeType\x1a\x12.chord.HealthReply\"\x00\x32\x39\n\x0bTossMessage\x12*\n\x02TM\x12\x0e.chord.Message\x1a\x12.chord.HealthReply\"\x00\x32@\n\nHandleData\x12\x32\n\x02GD\x12\x16.chord.StarterWithData\x1a\x12.chord.HealthReply\"\x00\x62\x06proto3'
 )
 
 
@@ -258,12 +258,73 @@ _MESSAGE = _descriptor.Descriptor(
   serialized_end=330,
 )
 
+
+_STARTERWITHDATA = _descriptor.Descriptor(
+  name='StarterWithData',
+  full_name='chord.StarterWithData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='node_key', full_name='chord.StarterWithData.node_key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='node_address', full_name='chord.StarterWithData.node_address', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_key', full_name='chord.StarterWithData.data_key', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_value', full_name='chord.StarterWithData.data_value', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_handling_type', full_name='chord.StarterWithData.data_handling_type', index=4,
+      number=5, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=332,
+  serialized_end=455,
+)
+
 DESCRIPTOR.message_types_by_name['HealthCheck'] = _HEALTHCHECK
 DESCRIPTOR.message_types_by_name['HealthReply'] = _HEALTHREPLY
 DESCRIPTOR.message_types_by_name['NodeDetail'] = _NODEDETAIL
 DESCRIPTOR.message_types_by_name['NodeVal'] = _NODEVAL
 DESCRIPTOR.message_types_by_name['NodeType'] = _NODETYPE
 DESCRIPTOR.message_types_by_name['Message'] = _MESSAGE
+DESCRIPTOR.message_types_by_name['StarterWithData'] = _STARTERWITHDATA
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 HealthCheck = _reflection.GeneratedProtocolMessageType('HealthCheck', (_message.Message,), {
@@ -308,6 +369,13 @@ Message = _reflection.GeneratedProtocolMessageType('Message', (_message.Message,
   })
 _sym_db.RegisterMessage(Message)
 
+StarterWithData = _reflection.GeneratedProtocolMessageType('StarterWithData', (_message.Message,), {
+  'DESCRIPTOR' : _STARTERWITHDATA,
+  '__module__' : 'chord_pb2'
+  # @@protoc_insertion_point(class_scope:chord.StarterWithData)
+  })
+_sym_db.RegisterMessage(StarterWithData)
+
 
 
 _HEALTHCHECKER = _descriptor.ServiceDescriptor(
@@ -317,8 +385,8 @@ _HEALTHCHECKER = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=332,
-  serialized_end=398,
+  serialized_start=457,
+  serialized_end=523,
   methods=[
   _descriptor.MethodDescriptor(
     name='Check',
@@ -343,8 +411,8 @@ _GETNODEVALUE = _descriptor.ServiceDescriptor(
   index=1,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=400,
-  serialized_end=465,
+  serialized_start=525,
+  serialized_end=590,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetNodeVal',
@@ -369,8 +437,8 @@ _NOTIFYNODE = _descriptor.ServiceDescriptor(
   index=2,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=467,
-  serialized_end=539,
+  serialized_start=592,
+  serialized_end=664,
   methods=[
   _descriptor.MethodDescriptor(
     name='NotifyNodeChanged',
@@ -395,8 +463,8 @@ _TOSSMESSAGE = _descriptor.ServiceDescriptor(
   index=3,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=541,
-  serialized_end=598,
+  serialized_start=666,
+  serialized_end=723,
   methods=[
   _descriptor.MethodDescriptor(
     name='TM',
@@ -412,5 +480,31 @@ _TOSSMESSAGE = _descriptor.ServiceDescriptor(
 _sym_db.RegisterServiceDescriptor(_TOSSMESSAGE)
 
 DESCRIPTOR.services_by_name['TossMessage'] = _TOSSMESSAGE
+
+
+_HANDLEDATA = _descriptor.ServiceDescriptor(
+  name='HandleData',
+  full_name='chord.HandleData',
+  file=DESCRIPTOR,
+  index=4,
+  serialized_options=None,
+  create_key=_descriptor._internal_create_key,
+  serialized_start=725,
+  serialized_end=789,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='GD',
+    full_name='chord.HandleData.GD',
+    index=0,
+    containing_service=None,
+    input_type=_STARTERWITHDATA,
+    output_type=_HEALTHREPLY,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_HANDLEDATA)
+
+DESCRIPTOR.services_by_name['HandleData'] = _HANDLEDATA
 
 # @@protoc_insertion_point(module_scope)

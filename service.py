@@ -3,10 +3,10 @@ from typing import Tuple
 import grpc
 import threading
 import logging
-from copy import copy
-from data_structure import Data
+from data_structure import Data, TableEntry
 from utils import NodeType as n
 from utils import TossMessageType as t
+from utils import DataHandlingType as d
 
 from grpc._channel import _InactiveRpcError
 
@@ -54,10 +54,32 @@ def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int
 
 def toss_message(starter_node: Data, receive_node: Data, message_type: int) -> int:
     # message_type 는 utils.TossMessageType 의 명세를 따름
+    print(starter_node.key, starter_node.value, message_type, receive_node.value)
     with grpc.insecure_channel(receive_node.value) as channel:
         stub = chord_pb2_grpc.TossMessageStub(channel)
         response = stub.TM(chord_pb2.Message(
             node_key=starter_node.key, node_address=starter_node.value, message_type=message_type
+        ))
+    return response.pong
+
+
+def data_request(starter_node: Data, receive_node: Data, data: Data, data_handling_type: int) -> int:
+    """
+    chord.proto 의 HandleData 요청을 보내는 메소드
+    :param starter_node: 처음 요청을 생성하는 노드, 함수를 호출할 시에는 호출한 노드를 넣는 것이 맞음
+    :param receive_node: 요청을 받는 노드, 현재는 모두 chord_node 의 successor 를 할당했으나, 추후에 finger table 이 구현되면 달라질 수 있음
+    :param data: 요청하는 데이터. get 이나 remove 시 value 는 비어도 됨
+    :param data_handling_type: utils.DataHandlingType 의 명세를 따름 (단, get_result 를 호출해서 사용할 필요는 없으니 사용하지 않아도 됨
+            -> 자세한건 186번째 HandleDataService 클래스 참고할 것
+    :return: receive_node 가 값을 잘 처리했으면 0이 return 됨
+    """
+    # data_handling_type 는 utils.DataHandlingType 의 명세를 따름
+    with grpc.insecure_channel(receive_node.value) as channel:
+        stub = chord_pb2_grpc.HandleDataStub(channel)
+        response = stub.GD(chord_pb2.StarterWithData(
+            node_key=starter_node.key, node_address=starter_node.value,
+            data_key=data.key, data_value=data.value,
+            data_handling_type=data_handling_type
         ))
     return response.pong
 
@@ -137,13 +159,14 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
             # 만약 join일 시, finger table 에서의 insert 위치를 찾아본다.
 
             # 1. 본인의 key값보다 크고, successor (finger_table[0]) 의 key 값보다 작은 경우는, 내가 추가한다.
-            if self.node_table.cur_node.key < request.node_address < self.node_table.finger_table.entries[0].key or \
+            if self.node_table.cur_node.key < request.node_key < self.node_table.finger_table.entries[0].key or \
                     self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < request.node_key:
                 logging.info(f'Now Adding {request.node_address}...')
                 self.notify_new_node_income(new_node=Data(request.node_key, request.node_address))
             # 2. 아닐 경우에는, 노드 테이블을 순회하면서 적절히 보낼 위치를 찾는다.
             # -> 일단 지금은, 바로 successor 에게 넘긴다. (finger table 의 속성을 변경하는 작업이 필요함)
             else:
+                logging.info(f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[0].value}')
                 threading.Thread(target=toss_message,
                                  args=(
                                      Data(request.node_key, request.node_address),
@@ -161,3 +184,56 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                 # threading.Thread(target=toss_message,
                 #                  args=(Data(request.node_key, request.node_address), send_node,))
             return chord_pb2.HealthReply(pong=0)
+
+
+class HandleDataService(chord_pb2_grpc.HandleDataServicer):
+    def __init__(self, node_table, data_table: TableEntry):
+        self.node_table = node_table
+        self.data_table = data_table
+
+    def get(self, starter_node: Data, req_data: Data):
+        try:
+            value = self.data_table.get(req_data.key).value
+        except ValueError:
+            value = ""
+
+        threading.Thread(
+            target=data_request,
+            args=(
+                self.node_table.cur_node,
+                starter_node,  # Finger Table 구현되면 수정 필요
+                Data(req_data.key, value),
+                d.get_result)
+        ).start()
+
+    def GD(self, request, context):
+        job_type = request.data_handling_type
+        starter_node = Data(request.node_key, request.node_address)
+        data = Data(request.data_key, request.data_value)
+
+        if job_type == d.get_result:
+            if data.value == "":
+                data.value = "not found"
+            logging.info(f"request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.value}")
+
+        elif self.node_table.cur_node.key < data.key < self.node_table.finger_table.entries[0].key or \
+                self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < data.key:
+            if job_type == d.get:
+                self.get(starter_node, data)
+            if job_type == d.set:
+                self.data_table.set(data)
+                logging.info(f"request key:{data.key[:10]}'s value is set to {data.value}, stored in {self.node_table.cur_node.value}")
+            if job_type == d.delete:
+                self.data_table.delete(data.key)
+                logging.info(f"request key:{data.key[:10]} is deleted from {self.node_table.cur_node.value}")
+        else:
+            threading.Thread(
+                target=data_request,
+                args=(
+                    starter_node,
+                    self.node_table.finger_table.entries[0],  # Finger Table 구현되면 수정 필요
+                    data,
+                    job_type)
+            ).start()
+        return chord_pb2.HealthReply(pong=0)
+
