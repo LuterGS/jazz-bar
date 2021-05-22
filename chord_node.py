@@ -45,7 +45,7 @@ class ChordNode:
         commands = command.split()
 
         if commands[0] == 'get':
-            key = generate_hash(commands[1])
+            key = commands[1]
             try:
                 value = self.data_table.get(key)
                 logging.info(f"request key:{key[:10]}'s value is {value}, stored in {self.address}")
@@ -63,7 +63,7 @@ class ChordNode:
                 data_request(self.node_table.cur_node, self.node_table.finger_table.entries[0], Data(key, value), d.set)
 
         elif commands[0] == 'delete':
-            key = generate_hash(commands[1])
+            key = commands[1]
             try:
                 self.data_table.delete(key)
                 logging.info(f"request key:{key[:10]} is deleted from {self.address}")
