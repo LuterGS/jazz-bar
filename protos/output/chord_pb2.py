@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0b\x63hord.proto\x12\x05\x63hord\"\x1b\n\x0bHealthCheck\x12\x0c\n\x04ping\x18\x01 \x01(\r\"\x1b\n\x0bHealthReply\x12\x0c\n\x04pong\x18\x01 \x01(\r\"6\n\nNodeDetail\x12\x14\n\x0cnode_address\x18\x01 \x01(\t\x12\x12\n\nwhich_node\x18\x02 \x01(\x05\"1\n\x07NodeVal\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\"F\n\x08NodeType\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x12\n\nwhich_node\x18\x03 \x01(\x05\"G\n\x07Message\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x14\n\x0cmessage_type\x18\x03 \x01(\r\"{\n\x0fStarterWithData\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x10\n\x08\x64\x61ta_key\x18\x03 \x01(\t\x12\x12\n\ndata_value\x18\x04 \x01(\t\x12\x1a\n\x12\x64\x61ta_handling_type\x18\x05 \x01(\r2B\n\rHealthChecker\x12\x31\n\x05\x43heck\x12\x12.chord.HealthCheck\x1a\x12.chord.HealthReply\"\x00\x32\x41\n\x0cGetNodeValue\x12\x31\n\nGetNodeVal\x12\x11.chord.NodeDetail\x1a\x0e.chord.NodeVal\"\x00\x32H\n\nNotifyNode\x12:\n\x11NotifyNodeChanged\x12\x0f.chord.NodeType\x1a\x12.chord.HealthReply\"\x00\x32\x39\n\x0bTossMessage\x12*\n\x02TM\x12\x0e.chord.Message\x1a\x12.chord.HealthReply\"\x00\x32@\n\nHandleData\x12\x32\n\x02GD\x12\x16.chord.StarterWithData\x1a\x12.chord.HealthReply\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0b\x63hord.proto\x12\x05\x63hord\"\x1b\n\x0bHealthCheck\x12\x0c\n\x04ping\x18\x01 \x01(\r\"\x1b\n\x0bHealthReply\x12\x0c\n\x04pong\x18\x01 \x01(\r\"6\n\nNodeDetail\x12\x14\n\x0cnode_address\x18\x01 \x01(\t\x12\x12\n\nwhich_node\x18\x02 \x01(\x05\"1\n\x07NodeVal\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\"F\n\x08NodeType\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x12\n\nwhich_node\x18\x03 \x01(\x05\"X\n\x07Message\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x14\n\x0cmessage_type\x18\x03 \x01(\r\x12\x0f\n\x07message\x18\x04 \x01(\r\"{\n\x0fStarterWithData\x12\x10\n\x08node_key\x18\x01 \x01(\t\x12\x14\n\x0cnode_address\x18\x02 \x01(\t\x12\x10\n\x08\x64\x61ta_key\x18\x03 \x01(\t\x12\x12\n\ndata_value\x18\x04 \x01(\t\x12\x1a\n\x12\x64\x61ta_handling_type\x18\x05 \x01(\r2B\n\rHealthChecker\x12\x31\n\x05\x43heck\x12\x12.chord.HealthCheck\x1a\x12.chord.HealthReply\"\x00\x32\x41\n\x0cGetNodeValue\x12\x31\n\nGetNodeVal\x12\x11.chord.NodeDetail\x1a\x0e.chord.NodeVal\"\x00\x32H\n\nNotifyNode\x12:\n\x11NotifyNodeChanged\x12\x0f.chord.NodeType\x1a\x12.chord.HealthReply\"\x00\x32\x39\n\x0bTossMessage\x12*\n\x02TM\x12\x0e.chord.Message\x1a\x12.chord.HealthReply\"\x00\x32@\n\nHandleData\x12\x32\n\x02GD\x12\x16.chord.StarterWithData\x1a\x12.chord.HealthReply\"\x00\x62\x06proto3'
 )
 
 
@@ -242,6 +242,13 @@ _MESSAGE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='chord.Message.message', index=3,
+      number=4, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -255,7 +262,7 @@ _MESSAGE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=259,
-  serialized_end=330,
+  serialized_end=347,
 )
 
 
@@ -314,8 +321,8 @@ _STARTERWITHDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=332,
-  serialized_end=455,
+  serialized_start=349,
+  serialized_end=472,
 )
 
 DESCRIPTOR.message_types_by_name['HealthCheck'] = _HEALTHCHECK
@@ -385,8 +392,8 @@ _HEALTHCHECKER = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=457,
-  serialized_end=523,
+  serialized_start=474,
+  serialized_end=540,
   methods=[
   _descriptor.MethodDescriptor(
     name='Check',
@@ -411,8 +418,8 @@ _GETNODEVALUE = _descriptor.ServiceDescriptor(
   index=1,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=525,
-  serialized_end=590,
+  serialized_start=542,
+  serialized_end=607,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetNodeVal',
@@ -437,8 +444,8 @@ _NOTIFYNODE = _descriptor.ServiceDescriptor(
   index=2,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=592,
-  serialized_end=664,
+  serialized_start=609,
+  serialized_end=681,
   methods=[
   _descriptor.MethodDescriptor(
     name='NotifyNodeChanged',
@@ -463,8 +470,8 @@ _TOSSMESSAGE = _descriptor.ServiceDescriptor(
   index=3,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=666,
-  serialized_end=723,
+  serialized_start=683,
+  serialized_end=740,
   methods=[
   _descriptor.MethodDescriptor(
     name='TM',
@@ -489,8 +496,8 @@ _HANDLEDATA = _descriptor.ServiceDescriptor(
   index=4,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=725,
-  serialized_end=789,
+  serialized_start=742,
+  serialized_end=806,
   methods=[
   _descriptor.MethodDescriptor(
     name='GD',

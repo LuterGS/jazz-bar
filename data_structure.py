@@ -89,6 +89,14 @@ class TableEntry:
         value = data.value
         self.set(key, value)  # 만약 이 부분에서 오류가 날 시, 적절히 처리해줄 것
 
+    @dispatch(str, str)
+    def append(self, key, value):
+        self.entries.append(Data(key, value))
+
+    @dispatch(object)
+    def append(self, data):
+        self.append(data.key, data.value)
+
     def delete(self, key):
         return self.entries.pop(self.index(key))
 
