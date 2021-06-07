@@ -72,6 +72,8 @@ class ChordNode:
 
         elif commands[0] == 'join':
             toss_message(self.node_table.cur_node, Data("", commands[1]), t.join_node)
+            print(f"finishing join node, will update finger table...")
+            toss_message(self.node_table.cur_node, self.node_table.finger_table.entries[0], t.finger_table_setting, 1)
 
         elif commands[0] == 'disjoin':
             self.server = None  # HealthCheck를 못 받게 모든 서버 종료
@@ -87,6 +89,9 @@ class ChordNode:
 
         elif commands[0] == 'summary':
             self.data_table.summary()
+
+        elif commands[0] == 'ft_update':
+            toss_message(self.node_table.cur_node, self.node_table.finger_table.entries[0], t.finger_table_setting, 1)
 
     def listen_command(self):
         try:

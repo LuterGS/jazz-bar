@@ -26,6 +26,14 @@ class _TossMessageType(object):
     def join_node(self):
         return 1
 
+    @constant
+    def finger_table_setting(self):
+        return 2
+
+    @constant
+    def receive_finger_data(self):
+        return 3
+
 
 class _DataHandlingType(object):
     @constant

@@ -52,15 +52,17 @@ def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int
     return response.pong
 
 
-def toss_message(starter_node: Data, receive_node: Data, message_type: int) -> int:
+def toss_message(starter_node: Data, receive_node: Data, message_type: int, message: int = 0) -> int:
     # message_type 는 utils.TossMessageType 의 명세를 따름
-    print(starter_node.key, starter_node.value, message_type, receive_node.value)
-    with grpc.insecure_channel(receive_node.value) as channel:
-        stub = chord_pb2_grpc.TossMessageStub(channel)
-        response = stub.TM(chord_pb2.Message(
-            node_key=starter_node.key, node_address=starter_node.value, message_type=message_type
-        ))
-    return response.pong
+    try:
+        with grpc.insecure_channel(receive_node.value) as channel:
+            stub = chord_pb2_grpc.TossMessageStub(channel)
+            response = stub.TM(chord_pb2.Message(
+                node_key=starter_node.key, node_address=starter_node.value, message_type=message_type, message=message
+            ))
+        return response.pong
+    except _InactiveRpcError:
+        return False
 
 
 def data_request(starter_node: Data, receive_node: Data, data: Data, data_handling_type: int) -> int:
@@ -142,7 +144,8 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
 
         # 3. 본인의 double successor 를 기존 successor 로, successor 를 새로운 노드로 업데이트
         self.node_table.finger_table.entries[1].update_info(
-            self.node_table.finger_table.entries[0].key, self.node_table.finger_table.entries[0].value, n.finger_table(1)
+            self.node_table.finger_table.entries[0].key, self.node_table.finger_table.entries[0].value,
+            n.finger_table(1)
         )
         self.node_table.finger_table.entries[0].update_info(new_node, 0)
 
@@ -166,7 +169,8 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
             # 2. 아닐 경우에는, 노드 테이블을 순회하면서 적절히 보낼 위치를 찾는다.
             # -> 일단 지금은, 바로 successor 에게 넘긴다. (finger table 의 속성을 변경하는 작업이 필요함)
             else:
-                logging.info(f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[0].value}')
+                logging.info(
+                    f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[0].value}')
                 threading.Thread(target=toss_message,
                                  args=(
                                      Data(request.node_key, request.node_address),
@@ -184,7 +188,53 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                 # threading.Thread(target=toss_message,
                 #                  args=(Data(request.node_key, request.node_address), send_node,))
             return chord_pb2.HealthReply(pong=0)
+        if request.message_type == t.finger_table_setting:
+            logging.debug(f'received finger table update message : {request.node_key}. {request.node_address}, {request.message}')
+            if request.node_key == self.node_table.cur_node.key:
+                logging.debug("finished receiving update message")
+                return chord_pb2.HealthReply(pong=0)
 
+            cur_node_num = int(request.message)
+            if str(bin(cur_node_num))[2:].count('1') == 1:
+                # 이 요청이 끝나야 계속 가도록 설정
+                return_val = toss_message(
+                    self.node_table.cur_node,
+                    Data(request.node_key, request.node_address),
+                    t.receive_finger_data,
+                    len(str(bin(cur_node_num))[2:]) - 1
+                )
+                logging.debug(f"send res : {return_val}")
+                if return_val is False:
+                    return chord_pb2.HealthReply(pong=0)
+            logging.debug("sending update message complete, pass to successor")
+            threading.Thread(target=toss_message,
+                             args=(
+                                 Data(request.node_key, request.node_address),
+                                 self.node_table.finger_table.entries[0],
+                                 request.message_type,
+                                 request.message + 1)
+                             ).start()
+            return chord_pb2.HealthReply(pong=0)
+        if request.message_type == t.receive_finger_data:
+            logging.debug(f'received finger data : {request.node_key}. {request.node_address}, {request.message}')
+            try:
+                self.node_table.finger_table.entries[request.message].update_info(
+                    request.node_key, request.node_address, request.message
+                )
+            except IndexError:
+                # 실제 들어가야하는 인덱스번호
+                index = request.message
+
+                # Finger Table 길이
+                fingers = len(self.node_table.finger_table.entries)
+
+                # 괴리율 (몇 개가 들어가야하는지)
+                while fingers != index:
+                    self.node_table.finger_table.append("Dummy", "Dummy")
+                    index += 1
+                self.node_table.finger_table.append(request.node_key, request.node_address)
+            logging.debug("done processing")
+            return chord_pb2.HealthReply(pong=0)
 
 class HandleDataService(chord_pb2_grpc.HandleDataServicer):
     def __init__(self, node_table, data_table: TableEntry):
@@ -222,7 +272,8 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
                 self.get(starter_node, data)
             if job_type == d.set:
                 self.data_table.set(data)
-                logging.info(f"request key:{data.key[:10]}'s value is set to {data.value}, stored in {self.node_table.cur_node.value}")
+                logging.info(
+                    f"request key:{data.key[:10]}'s value is set to {data.value}, stored in {self.node_table.cur_node.value}")
             if job_type == d.delete:
                 self.data_table.delete(data.key)
                 logging.info(f"request key:{data.key[:10]} is deleted from {self.node_table.cur_node.value}")
@@ -236,4 +287,3 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
                     job_type)
             ).start()
         return chord_pb2.HealthReply(pong=0)
-

@@ -56,10 +56,13 @@ message Message{
   string node_key = 1;       // 최초 발신자 id
   string node_address = 2;     // 최초 발신자 address
   uint32 message_type = 3;  // 메시지 타입
+  uint32 message = 4;
   // 현재 정의된 message
   // 1 이면, Network에 join하는 것으로 판단
   // 만약, host < node_host < host.successor.host 일 경우,
   // 해당 host의 successor로 node 등록
+
+  // 2 면, finger table을 만들기 위해 메시지를 전달하는 것
 }
 
 
