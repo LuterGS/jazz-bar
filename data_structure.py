@@ -97,6 +97,9 @@ class TableEntry:
     def append(self, data):
         self.append(data.key, data.value)
 
+    def pop(self, index):
+        self.entries.pop(index)
+
     def delete(self, key):
         return self.entries.pop(self.index(key))
 

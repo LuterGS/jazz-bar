@@ -20,6 +20,14 @@ class _NodeType(object):
     def finger_table(self, i):
         return i
 
+    @constant
+    def successor(self):
+        return 1
+
+    @constant
+    def d_successor(self):
+        return 2
+
 
 class _TossMessageType(object):
     @constant
@@ -33,6 +41,10 @@ class _TossMessageType(object):
     @constant
     def receive_finger_data(self):
         return 3
+
+    @constant
+    def left_node(self):
+        return 5
 
 
 class _DataHandlingType(object):

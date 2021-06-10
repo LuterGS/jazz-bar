@@ -1,3 +1,4 @@
+import math
 from typing import Tuple
 
 import grpc
@@ -52,13 +53,14 @@ def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int
     return response.pong
 
 
-def toss_message(starter_node: Data, receive_node: Data, message_type: int, message: int = 0) -> int:
+def toss_message(starter_node: Data, receive_node: Data, message_type: int, message: int = 0, node_type: int = 0) -> int:
     # message_type 는 utils.TossMessageType 의 명세를 따름
     try:
         with grpc.insecure_channel(receive_node.value) as channel:
             stub = chord_pb2_grpc.TossMessageStub(channel)
             response = stub.TM(chord_pb2.Message(
-                node_key=starter_node.key, node_address=starter_node.value, message_type=message_type, message=message
+                node_key=starter_node.key, node_address=starter_node.value,
+                message_type=message_type, message=message, node_type=node_type
             ))
         return response.pong
     except _InactiveRpcError:
@@ -132,22 +134,22 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
         # 본인이 새로운 노드를 추가해야 할 때 -> 본인의 successor 로 추가해야 할 때 처리방식
 
         # 1. 현재 본인의 기존 successor 에게, 새로운 노드가 predecessor 라고 알려줌
-        notify_node_info(self.node_table.finger_table.entries[0], new_node, n.predecessor)
+        notify_node_info(self.node_table.finger_table.entries[n.successor], new_node, n.predecessor)
 
         # 2. 새 노드의 predecessor 를 본인으로,
         #    새 노드의 successor 를 본인의 기존 successor 로,
         #    새 노드의 double_successor 를 본인의 기존 double_successor 로 설정함
         #    추후에 finger table 을 사용할 때는, 반복문을 돌면서 그냥 finger table 자체를 할당해주면 됨.
         notify_node_info(new_node, self.node_table.cur_node, n.predecessor)
-        notify_node_info(new_node, self.node_table.finger_table.entries[0], n.finger_table(0))
-        notify_node_info(new_node, self.node_table.finger_table.entries[1], n.finger_table(1))
+        notify_node_info(new_node, self.node_table.finger_table.entries[n.successor], n.successor)
+        notify_node_info(new_node, self.node_table.finger_table.entries[n.d_successor], n.d_successor)
 
         # 3. 본인의 double successor 를 기존 successor 로, successor 를 새로운 노드로 업데이트
-        self.node_table.finger_table.entries[1].update_info(
-            self.node_table.finger_table.entries[0].key, self.node_table.finger_table.entries[0].value,
-            n.finger_table(1)
+        self.node_table.finger_table.entries[n.d_successor].update_info(
+            self.node_table.finger_table.entries[n.succssor].key, self.node_table.finger_table.entries[n.successor].value,
+            n.d_successor
         )
-        self.node_table.finger_table.entries[0].update_info(new_node, 0)
+        self.node_table.finger_table.entries[n.successor].update_info(new_node, n.successor)
 
         # 4. 본인의 predecessor 에게, double successor 가 새로운 노드임을 알려줌
         #    추후에 finger table을 사용할 때, 반복문을 돌면서 처리할 수는 있을거같음.
@@ -157,24 +159,24 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                          ).start()
 
     def TM(self, request, context):
-        logging.info(f'Toss Message received from {request.node_address}')
+        logging.debug(f'Toss Message received from {request.node_address}')
         if request.message_type == t.join_node:
             # 만약 join일 시, finger table 에서의 insert 위치를 찾아본다.
 
             # 1. 본인의 key값보다 크고, successor (finger_table[0]) 의 key 값보다 작은 경우는, 내가 추가한다.
-            if self.node_table.cur_node.key < request.node_key < self.node_table.finger_table.entries[0].key or \
-                    self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < request.node_key:
+            if self.node_table.cur_node.key < request.node_key < self.node_table.finger_table.entries[n.successor].key or \
+                    self.node_table.finger_table.entries[n.successor].key < self.node_table.cur_node.key < request.node_key:
                 logging.info(f'Now Adding {request.node_address}...')
                 self.notify_new_node_income(new_node=Data(request.node_key, request.node_address))
             # 2. 아닐 경우에는, 노드 테이블을 순회하면서 적절히 보낼 위치를 찾는다.
             # -> 일단 지금은, 바로 successor 에게 넘긴다. (finger table 의 속성을 변경하는 작업이 필요함)
             else:
                 logging.info(
-                    f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[0].value}')
+                    f'Passing {request.node_address}`s message to {self.node_table.finger_table.entries[n.successor].value}')
                 threading.Thread(target=toss_message,
                                  args=(
                                      Data(request.node_key, request.node_address),
-                                     self.node_table.finger_table.entries[0],
+                                     self.node_table.finger_table.entries[n.successor],
                                      request.message_type)
                                  ).start()
                 # send_node = False
@@ -188,39 +190,91 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                 # threading.Thread(target=toss_message,
                 #                  args=(Data(request.node_key, request.node_address), send_node,))
             return chord_pb2.HealthReply(pong=0)
+
+        # 만약에 메시지 타입이 finger table을 업데이트하는 메시지라면
         if request.message_type == t.finger_table_setting:
             logging.debug(f'received finger table update message : {request.node_key}. {request.node_address}, {request.message}')
+
+            # 만약 받은 요청의 node key와 자신의 key가 같다면 (순회를 마쳤다면)
             if request.node_key == self.node_table.cur_node.key:
                 logging.debug("finished receiving update message")
+
+                # 현재 네트워크의 노드 수를 갱신해준 후 종료
+                self.node_table.node_network_num = request.message
                 return chord_pb2.HealthReply(pong=0)
 
+            # 만약 받은 요청의 node_type가 join_node 라면 (새로운 node가 join되었으면)
+            if request.node_type == t.join_node:
+
+                # 현재 노드의 네트워크에 존재하는 노드개수 변수를 1 증가시킴
+                self.node_table.node_network_num += 1
+
+            # 만약 받은 요청의 node_type가 left_node 라면 (노드가 나간다면)
+            if request.node_type == t.left_node:
+
+                # 현재 노드의 네트워크에 존재하는 노드개수 변수를 1 감소시킴
+                self.node_table.node_network_num -= 1
+
+                logging.debug("sending update message complete, pass to successor")
+                threading.Thread(target=toss_message,
+                                 args=(
+                                     Data(request.node_key, request.node_address),
+                                     self.node_table.finger_table.entries[n.successor],
+                                     request.message_type,
+                                     request.message)
+                                 ).start()
+                return chord_pb2.HealthReply(pong=0)
+
+
+
             cur_node_num = int(request.message)
-            if str(bin(cur_node_num))[2:].count('1') == 1:
+            cur_finger_table_num = math.log2(cur_node_num)
+
+            # 만약 현재 메시지 수가 2의 배수라면 (1 포함)
+            if cur_finger_table_num - int(cur_finger_table_num) == 0:
+
+                # 원본에게 finger table을 업데이트하도록 설정
                 # 이 요청이 끝나야 계속 가도록 설정
                 return_val = toss_message(
                     self.node_table.cur_node,
                     Data(request.node_key, request.node_address),
                     t.receive_finger_data,
-                    len(str(bin(cur_node_num))[2:]) - 1
+                    int(cur_finger_table_num)
                 )
                 logging.debug(f"send res : {return_val}")
+
+                # 만약 원본 노드가 응답이 없으면 (연결이 끊겼으면), 메시지를 끊음
                 if return_val is False:
+                    logging.debug(f"starter node network error, will end toss message here")
                     return chord_pb2.HealthReply(pong=0)
+
+            # 만약 어떤 사유로 노드 네트워크를 4번 이상 순회했는데도 여전히 돈다면, 네트워크가 끊어짐을 알림
+            if cur_node_num > 4 * self.node_table.node_network_num:
+                logging.info("CRITICAL! network is corrupted. end this toss message")
+                return chord_pb2.HealthReply(pong=0)
+
+            # 자신이 처리할 일이 끝났으면, 이 요청을 그대로 자신의 successor에게 전송
             logging.debug("sending update message complete, pass to successor")
             threading.Thread(target=toss_message,
                              args=(
                                  Data(request.node_key, request.node_address),
-                                 self.node_table.finger_table.entries[0],
+                                 self.node_table.finger_table.entries[n.successor],
                                  request.message_type,
                                  request.message + 1)
                              ).start()
             return chord_pb2.HealthReply(pong=0)
+
+        # 만약 자신의 finger table을 업데이트하는 요청이 왔을 때
         if request.message_type == t.receive_finger_data:
             logging.debug(f'received finger data : {request.node_key}. {request.node_address}, {request.message}')
+
+            # 해당 finger table index가 존재하면 쌓게끔 함
             try:
                 self.node_table.finger_table.entries[request.message].update_info(
                     request.node_key, request.node_address, request.message
                 )
+
+            # 만약 인덱스가 존재하지 않을 경우, 없는 것만큼 넣어준 다음 append
             except IndexError:
                 # 실제 들어가야하는 인덱스번호
                 index = request.message
@@ -261,13 +315,15 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
         starter_node = Data(request.node_key, request.node_address)
         data = Data(request.data_key, request.data_value)
 
+        cur_key = self.node_table.cur_node.key
+        successor_key = self.node_table.finger_table.entries[n.successor].key
+
         if job_type == d.get_result:
             if data.value == "":
                 data.value = "not found"
             logging.info(f"request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.value}")
 
-        elif self.node_table.cur_node.key < data.key < self.node_table.finger_table.entries[0].key or \
-                self.node_table.finger_table.entries[0].key < self.node_table.cur_node.key < data.key:
+        elif cur_key <= data.key < successor_key or successor_key < cur_key <= data.key or data.key < successor_key < cur_key:
             if job_type == d.get:
                 self.get(starter_node, data)
             if job_type == d.set:
