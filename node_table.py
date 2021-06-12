@@ -35,6 +35,7 @@ class NodeTable(threading.Thread):
         # finger table update cycle 정의
         self.finger_table_update_cycle = 0
 
+        # 보고서 상, 최초 init은 두 개의 노드가 있는 network이기 때문에, 해당 네트워크를 init해 줌
         if port == "50051":
             self.predecessor = Data("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
             self.finger_table.set("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
@@ -51,7 +52,6 @@ class NodeTable(threading.Thread):
             self.predecessor = Data(ids, address)
             self.finger_table.set(ids, address)  # 0 - successor
             self.finger_table.entries.append(Data(ids, address))  # 1 - double successor
-            # self.finger_table.set(ids, address)   # -> 사용 안됨!
 
     def log_nodes(self):
         # TODO : TableEntry 클래스의 summary 를 이용해서 처리할 수 있지 않을까?
@@ -67,6 +67,7 @@ class NodeTable(threading.Thread):
     def find_nearest_alive_node(self, key):
         alive_node_num = 0
         alive_node_found = False
+
         # 가장 가까운 노드 값 찾기
         for i in range(len(self.finger_table.entries) - 1):
             if self.finger_table.entries[i].key > self.finger_table.entries[i + 1].key:
@@ -147,13 +148,13 @@ class NodeTable(threading.Thread):
                 threading.Thread(target=data_request,
                                  args=(self.cur_node, self.predecessor, self.data_table.entries[i], d.set)
                                  ).start()
+                self.data_table.delete(cur_key)
 
             if cur_key < successor_key <= data_key or successor_key <= data_key < cur_key:
                 threading.Thread(target=data_request,
                                  args=(self.cur_node, self.finger_table.entries[n.successor], self.data_table.entries[i], d.set)
                                  ).start()
-
-            self.data_table.delete(cur_key)
+                self.data_table.delete(cur_key)
 
     def update_finger_table_info(self):
         self.log_nodes()
@@ -164,7 +165,7 @@ class NodeTable(threading.Thread):
             self.finger_table_renew()
 
             # 15초 간격으로 finger table 최신으로 업데이트 (주기 조정 가능)
-            if self.finger_table_update_cycle > 6:
+            if self.finger_table_update_cycle >= 5:
                 toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
 
             # 만약 disjoin이 일어나면 해당 cycle도 break

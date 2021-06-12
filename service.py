@@ -201,6 +201,9 @@ class NotifyNodeService(chord_pb2_grpc.NotifyNodeServicer):
 
 
 class TossMessageService(chord_pb2_grpc.TossMessageServicer):
+    """
+    def toss_message 를 받는 서버입니다.
+    """
     def __init__(self, node_table):
         self.node_table = node_table
 
@@ -226,7 +229,6 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
         self.node_table.finger_table.entries[n.successor].update_info(new_node, n.successor)
 
         # 4. 본인의 predecessor 에게, double successor 가 새로운 노드임을 알려줌
-        #    추후에 finger table을 사용할 때, 반복문을 돌면서 처리할 수는 있을거같음.
         threading.Thread(target=notify_node_info,
                          args=(
                              self.node_table.predecessor, new_node, n.finger_table(1),)
@@ -253,16 +255,6 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                                      self.node_table.finger_table.entries[n.successor],
                                      request.message_type)
                                  ).start()
-                # send_node = False
-                # for i in range(len(self.finger_table.entries) - 1):
-                #     if self.finger_table.entries[i].key < request.node_key < self.finger_table.entries[i + 1].key:
-                #         send_node = self.finger_table.entries[i]
-                #         break
-                # if not send_node and self.finger_table.entries[-1].key < request.node_key:
-                #     send_node = self.finger_table.entries[-1]
-                #
-                # threading.Thread(target=toss_message,
-                #                  args=(Data(request.node_key, request.node_address), send_node,))
             return chord_pb2.HealthReply(pong=0)
 
         # 만약에 메시지 타입이 finger table을 업데이트하는 메시지라면
@@ -339,6 +331,9 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
 
 
 class HandleDataService(chord_pb2_grpc.HandleDataServicer):
+    """
+    def data_request 를 받는 서버입니다.
+    """
     def __init__(self, node_table, data_table: TableEntry):
         self.node_table = node_table
         self.data_table = data_table
@@ -366,11 +361,17 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
         cur_key = self.node_table.cur_node.key
         successor_key = self.node_table.finger_table.entries[n.successor].key
 
+        # 만약 get 한 값이 들어왔을 때
         if job_type == d.get_result:
+
+            # 값이 없으면 not found를 출력하게끔 한 뒤
             if data.value == "":
                 data.value = "not found"
+
+            # 실제 get 한 값들을 보여줌
             logging.info(f"request key:{data.key[:10]}'s value is {data.value}, stored in {starter_node.value}")
 
+        # 만약 자신의 data table에 접근해야 하는 값이라면
         elif cur_key <= data.key < successor_key or successor_key < cur_key <= data.key or data.key < successor_key < cur_key:
             if job_type == d.get:
                 self.get(starter_node, data)
@@ -382,11 +383,15 @@ class HandleDataService(chord_pb2_grpc.HandleDataServicer):
                 self.data_table.delete(data.key)
                 logging.info(f"request key:{data.key[:10]} is deleted from {self.node_table.cur_node.value}")
         else:
+            # 살아있는 가장 가까운 노드를 찾음
+            nearest_node = self.node_table.find_nearest_alive_node(data.key)
+
+            # 그 노드에게 이 정보를 보낸 뒤 종료
             threading.Thread(
                 target=data_request,
                 args=(
                     starter_node,
-                    self.node_table.finger_table.entries[0],  # Finger Table 구현되면 수정 필요
+                    nearest_node,  # Finger Table 구현되면 수정 필요
                     data,
                     job_type)
             ).start()

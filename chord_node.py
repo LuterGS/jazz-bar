@@ -14,30 +14,21 @@ from utils import TossMessageType as t
 from utils import DataHandlingType as d
 from utils import generate_hash
 
-from protos.output import chord_pb2
 from protos.output import chord_pb2_grpc
 
 
 class ChordNode:
-    """
-    id : int
-    host : string
-    port : string
-    service : Service
-    server : grpc.server
-    finger table과 data table은 별도의 class로 관리
-    해당 class는 자동 정렬 기능이 있는 list를 담고 있음
-    predecessor: Node
-    """
 
     def __init__(self, address):
         self.server = None
+
+        # 현재 이 서버가 구동되고 있는 port
         self.address = address
 
         # data table 생성
         self.data_table = TableEntry()
 
-        # node table을 만들었으며, node table 내에서 모든 연결이 일어남. (node_table = finger table + myself)
+        # node table 생성
         self.node_table = NodeTable(generate_hash(self.address), self.address, self.data_table)
 
         # 기능 구현 대기
@@ -91,7 +82,7 @@ class ChordNode:
             toss_message(self.node_table.cur_node, self.node_table.finger_table.entries[n.successor], t.finger_table_setting, 1, t.join_node)
 
         elif commands[0] == 'disjoin':
-            self.server = None  # HealthCheck를 못 받게 모든 서버 종료
+            self.server.stop(0)  # HealthCheck를 못 받게 모든 서버 종료
             self.node_table.stop_flag = True    # health check 송신 종료
             logging.info('Waiting for other nodes to update their finger tables')
             time.sleep(10)  # 다른 Node들이 FingerTable을 업데이트할때까지 대기
@@ -122,7 +113,7 @@ class ChordNode:
     def serve(self):
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
-        # 이 부분이 server
+        # 이 부분이 server에 메시지 핸들러들을 등록시킴
         chord_pb2_grpc.add_HealthCheckerServicer_to_server(HealthCheckService(self.node_table), self.server)
         chord_pb2_grpc.add_GetNodeValueServicer_to_server(GetNodeValueService(self.node_table), self.server)
         chord_pb2_grpc.add_NotifyNodeServicer_to_server(NotifyNodeService(self.node_table), self.server)
@@ -130,11 +121,11 @@ class ChordNode:
         chord_pb2_grpc.add_HandleDataServicer_to_server(HandleDataService(self.node_table, self.data_table),
                                                         self.server)
 
+        # 서버 포트 지정 및 서버 시작
         self.server.add_insecure_port(self.address)
         self.server.start()
 
         logging.info(f'ChordServer is listening on {self.address}')
-        # self.server.wait_for_termination()
 
         # 기능 시작 (thread 구분)
         self.command_listener.start()
