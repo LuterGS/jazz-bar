@@ -4,14 +4,14 @@
 ## How to use
 - `get`
     - ```shell script
-      get key   # key에 해당하는 Value를 가져옴
+      get key         # key에 해당하는 Value를 가져옴
       ```
 
 - `set`
     - ```shell script
       set key value   # {key : value} 를 DHT 에 저장 
       ```
-    - key가 존재하는 경우, value만 update 
+      - key가 존재하는 경우, value만 update 
 
 - `delete`
     - ```shell script
@@ -22,11 +22,23 @@
     - ```shell script
       join host:port  # 기존의 DHT 테이블에 접근 요청      
       ```
-    - host는 IP, port는 실행중인 port 번호
+      - host는 IP, port는 실행중인 port 번호
 
 - `disjoin`
     - ```shell script
       disjoin         # 현재 DHT 에서 나감 (데이터 모두 삭제) 
+      ```
+- `show`
+    - ```shell script
+      show            # 현재 노드의 Finger Table을 모두 출력
+      ```
+- `summary`
+    - ```shell script
+      summary         # 현재 노드의 Data를 모두 출력
+      ```
+- `ft_update`
+    - ```shell script
+      ft_update       # 현재 노드의 Finger Table을 업데이트
       ```
 
 ## How to run

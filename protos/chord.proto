@@ -57,6 +57,7 @@ message Message{
   string node_address = 2;     // 최초 발신자 address
   uint32 message_type = 3;  // 메시지 타입
   uint32 message = 4;
+  uint32 node_type = 5;
   // 현재 정의된 message
   // 1 이면, Network에 join하는 것으로 판단
   // 만약, host < node_host < host.successor.host 일 경우,
