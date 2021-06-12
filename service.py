@@ -15,17 +15,20 @@ from protos.output import chord_pb2
 from protos.output import chord_pb2_grpc
 
 """
-class Service:
-    # server : grpc.server
-    #
-    def __init__(self):
-        pass
-    def serve(self):
-        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+service.py 는 gRPC 통신 기능을 모아놓은 것입니다.
+chord.proto에 따라 정의된 규격들이 있습니다.
+
+def (함수) 들은, 메시지를 전송하는 함수이고,
+class (클래스) 들은, Servicer에 등록하여 해당 메시지를 받는 대기 서버입니다.
 """
 
 
 def node_health_check(node: Data) -> bool:
+    """
+    해당 노드가 살아있는지 확인하는 함수입니다.
+    :param node: 살아있는지 확인할 노드
+    :return: 살아있을 시 True, 죽어있을 시 False를 return합니다.
+    """
     try:
         with grpc.insecure_channel(node.value) as channel:
             stub = chord_pb2_grpc.HealthCheckerStub(channel)
@@ -35,25 +38,63 @@ def node_health_check(node: Data) -> bool:
         return False
 
 
-def request_node_info(node: Data, which_info: int) -> Tuple[str, str]:
+def request_node_info(node: Data, which_info: int):
+    """
+    해당 노드에게 그 노드가 가지고 있는 노드들의 정보를 물어봅니다.
+    ex) predecessor에게 predecessor가 가지고 있는 finger table의 데이터를 물어봄
+
+    :param node: 노드 정보를 물어볼 노드입니다.
+    :param which_info: 해당 노드의 몇 번째 finger table의 정보, 혹은 predecessor인지를 물어봅니다.
+                    규격은 utils.py의 class _NodeType를 사용합니다.
+    :return: 요청한 노드의 정보가 존재하면 해당 노드의 정보를, param node가 죽었거나 해당 정보가 없으면 False를 return합니다.
+    """
     # which_info는 utils.NodeType 의 명세를 따름
-    with grpc.insecure_channel(node.value) as channel:
-        stub = chord_pb2_grpc.GetNodeValueStub(channel)
-        response = stub.GetNodeVal(chord_pb2.NodeDetail(node_address=node.value, which_node=which_info))
-    return response.node_key, response.node_address
+    try:
+        with grpc.insecure_channel(node.value) as channel:
+            stub = chord_pb2_grpc.GetNodeValueStub(channel)
+            response = stub.GetNodeVal(chord_pb2.NodeDetail(node_address=node.value, which_node=which_info))
+        if response.node_key == "0":
+            return False
+        return Data(response.node_key, response.node_address)
+    except _InactiveRpcError:
+        return False
 
 
 def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int:
+    """
+    해당 노드에게, 노드가 가지고 있는 노드들의 정보를 업데이트하라고 지시합니다.
+    ex) predecessor에게 predecessor의 successor를 물어봄
+
+    :param target_node: 노드 정보를 물어볼 노드입니다.
+    :param node_info: 업데이트할 노드의 정보입니다.
+    :param which_node: 해당 노드의 몇 번째 finger table 정보, 혹은 predecessor인지를 물어봅니다.
+                    규격은 utils.py의 class _NodeType를 사용합니다.
+    :return: 해당 노드가 정보를 잘 받았으면 True(1), 해당 노드가 정보를 잘 받지 못했으면 (통신에 에러가 나면) 0을 return합니다.
+    """
     # change_type 는 utils.NodeType 의 명세를 따름
-    with grpc.insecure_channel(target_node.value) as channel:
-        stub = chord_pb2_grpc.NotifyNodeStub(channel)
-        response = stub.NotifyNodeChanged(chord_pb2.NodeType(
-            node_key=node_info.key, node_address=node_info.value, which_node=which_node
-        ))
-    return response.pong
+    try:
+        with grpc.insecure_channel(target_node.value) as channel:
+            stub = chord_pb2_grpc.NotifyNodeStub(channel)
+            response = stub.NotifyNodeChanged(chord_pb2.NodeType(
+                node_key=node_info.key, node_address=node_info.value, which_node=which_node
+            ))
+        return response.pong
+    except _InactiveRpcError:
+        return False
 
 
 def toss_message(starter_node: Data, receive_node: Data, message_type: int, message: int = 0, node_type: int = 0) -> int:
+    """
+    toss_message로, 주로 노드들에게 정보를 보낼 때 사용합니다.
+    현재는 join, disjoin, update finger table시에 사용합니다.
+
+    :param starter_node: 이 toss message 를 최초로 보낸 노드의 정보입니다.
+    :param receive_node: 현재 이 toss message 를 받을 노드의 정보입니다.
+    :param message_type: 메시지의 타입입니다. utils.py의 _TossMessageType의 명세를 따릅니다.
+    :param message: 전달할 메시지입니다. 현재는 finger table 업데이트 시에, node를 카운팅하는 데 사용합니다.
+    :param node_type: 세부 노드 정보입니다. 현재는 finger table 업데이트 시에, join, djsjoin을 구분하는 데 사용합니다.
+    :return: 메시지를 성공적으로 전달했으면 1 (True), 실패했으면 0 (False)을 return합니다.
+    """
     # message_type 는 utils.TossMessageType 의 명세를 따름
     try:
         with grpc.insecure_channel(receive_node.value) as channel:
@@ -69,15 +110,14 @@ def toss_message(starter_node: Data, receive_node: Data, message_type: int, mess
 
 def data_request(starter_node: Data, receive_node: Data, data: Data, data_handling_type: int) -> int:
     """
-    chord.proto 의 HandleData 요청을 보내는 메소드
-    :param starter_node: 처음 요청을 생성하는 노드, 함수를 호출할 시에는 호출한 노드를 넣는 것이 맞음
-    :param receive_node: 요청을 받는 노드, 현재는 모두 chord_node 의 successor 를 할당했으나, 추후에 finger table 이 구현되면 달라질 수 있음
-    :param data: 요청하는 데이터. get 이나 remove 시 value 는 비어도 됨
-    :param data_handling_type: utils.DataHandlingType 의 명세를 따름 (단, get_result 를 호출해서 사용할 필요는 없으니 사용하지 않아도 됨
-            -> 자세한건 186번째 HandleDataService 클래스 참고할 것
+    네트워크상의 data를 요청하거나 설정할 때 사용합니다.
+
+    :param starter_node: 이 data_request 를 최초로 보낸 노드의 정보입니다.
+    :param receive_node: 현재 이 data_request 를 받을 노드의 정보입니다.
+    :param data: 요청하는 데이터입니다. 일반적으로 set 시에만 Data 클래스 내부의 모든 정보가 필요하며, get 이나 remove 시 value 는 비어도 됩니다.
+    :param data_handling_type: 메시지의 요청을 구분하는 변수입니다. utils.py의 _DataHandlingType 를 따릅니다.
     :return: receive_node 가 값을 잘 처리했으면 0이 return 됨
     """
-    # data_handling_type 는 utils.DataHandlingType 의 명세를 따름
     with grpc.insecure_channel(receive_node.value) as channel:
         stub = chord_pb2_grpc.HandleDataStub(channel)
         response = stub.GD(chord_pb2.StarterWithData(
@@ -89,14 +129,21 @@ def data_request(starter_node: Data, receive_node: Data, data: Data, data_handli
 
 
 class HealthCheckService(chord_pb2_grpc.HealthCheckerServicer):
+    """
+    def node_health_check 를 받는 서버입니다.
+    """
     def __init__(self, node_table):
         self.node_table = node_table
 
     def Check(self, request, context):
+        # 서버가 살아있으면, HealthReply를 해줍니다.
         return chord_pb2.HealthReply(pong=0)
 
 
 class GetNodeValueService(chord_pb2_grpc.GetNodeValueServicer):
+    """
+    def request_node_info 를 받는 서버입니다.
+    """
     def __init__(self, node_table):
         self.node_table = node_table
 
@@ -106,13 +153,20 @@ class GetNodeValueService(chord_pb2_grpc.GetNodeValueServicer):
                 node_key=self.node_table.predecessor.key, node_address=self.node_table.predecessor.value
             )
         else:
-            node_data = self.node_table.finger_table.entries[request.which_node]
-            key = node_data.key
-            value = node_data.value
-            return chord_pb2.NodeVal(node_key=key, node_address=value)
+            try:
+                node_data = self.node_table.finger_table.entries[request.which_node]
+                key = node_data.key
+                value = node_data.value
+                return chord_pb2.NodeVal(node_key=key, node_address=value)
+            except IndexError:
+                return chord_pb2.NodeVal(node_key="0", node_address="0")
+
 
 
 class NotifyNodeService(chord_pb2_grpc.NotifyNodeServicer):
+    """
+    def notify_node_info 를 받는 서버입니다.
+    """
     def __init__(self, node_table):
         self.node_table = node_table
 
@@ -120,10 +174,30 @@ class NotifyNodeService(chord_pb2_grpc.NotifyNodeServicer):
         if request.which_node == n.predecessor:
             self.node_table.predecessor.update_info(request.node_key, request.node_address, -1)
         else:
-            self.node_table.finger_table.entries[request.which_node].update_info(
-                request.node_key, request.node_address, request.which_node
-            )
-        return chord_pb2.HealthReply(pong=0)
+            try:
+                # 먼저, 요청하는 인덱스가 존재한다면 해당 인덱스의 값을 업데이트합니다.
+                self.node_table.finger_table.entries[request.which_node].update_info(
+                    request.node_key, request.node_address, request.which_node
+                )
+
+            # 만약 인덱스가 존재하지 않을 경우, 빈 만큼 dummy 값을 넣어준 뒤에, 해당 값을 업데이트해줍니다.
+            except IndexError:
+                # 실제 들어가야하는 인덱스번호
+                index = request.which_node
+
+                # Finger Table 길이
+                fingers = len(self.node_table.finger_table.entries)
+
+                # 괴리율만큼 dummy 값을 넣어줌
+                while fingers != index:
+                    self.node_table.finger_table.append("Dummy", "Dummy")
+                    index += 1
+
+                # 해당 값을 append
+                self.node_table.finger_table.append(request.node_key, request.node_address)
+
+            finally:
+                return chord_pb2.HealthReply(pong=0)
 
 
 class TossMessageService(chord_pb2_grpc.TossMessageServicer):
@@ -235,16 +309,15 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
 
                 # 원본에게 finger table을 업데이트하도록 설정
                 # 이 요청이 끝나야 계속 가도록 설정
-                return_val = toss_message(
+                is_starter_node_alive = notify_node_info(
                     self.node_table.cur_node,
                     Data(request.node_key, request.node_address),
-                    t.receive_finger_data,
                     int(cur_finger_table_num)
                 )
-                logging.debug(f"send res : {return_val}")
+                logging.debug(f"send res : {is_starter_node_alive}")
 
                 # 만약 원본 노드가 응답이 없으면 (연결이 끊겼으면), 메시지를 끊음
-                if return_val is False:
+                if is_starter_node_alive is False:
                     logging.debug(f"starter node network error, will end toss message here")
                     return chord_pb2.HealthReply(pong=0)
 
@@ -264,31 +337,6 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                              ).start()
             return chord_pb2.HealthReply(pong=0)
 
-        # 만약 자신의 finger table을 업데이트하는 요청이 왔을 때
-        if request.message_type == t.receive_finger_data:
-            logging.debug(f'received finger data : {request.node_key}. {request.node_address}, {request.message}')
-
-            # 해당 finger table index가 존재하면 쌓게끔 함
-            try:
-                self.node_table.finger_table.entries[request.message].update_info(
-                    request.node_key, request.node_address, request.message
-                )
-
-            # 만약 인덱스가 존재하지 않을 경우, 없는 것만큼 넣어준 다음 append
-            except IndexError:
-                # 실제 들어가야하는 인덱스번호
-                index = request.message
-
-                # Finger Table 길이
-                fingers = len(self.node_table.finger_table.entries)
-
-                # 괴리율 (몇 개가 들어가야하는지)
-                while fingers != index:
-                    self.node_table.finger_table.append("Dummy", "Dummy")
-                    index += 1
-                self.node_table.finger_table.append(request.node_key, request.node_address)
-            logging.debug("done processing")
-            return chord_pb2.HealthReply(pong=0)
 
 class HandleDataService(chord_pb2_grpc.HandleDataServicer):
     def __init__(self, node_table, data_table: TableEntry):

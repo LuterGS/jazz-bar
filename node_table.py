@@ -106,17 +106,24 @@ class NodeTable(threading.Thread):
             successor_node = self.finger_table.entries[successor_num]
             while True:
                 # 1. 현재 최우선적으로 살아있는 노드에게 노드의 predecessor를 물어봄
-                s_predecessor_key, s_predecessor_address = request_node_info(successor_node, n.predecessor)
+                s_predecessor = request_node_info(successor_node, n.predecessor)
 
                 # 2. 내 값과 predecessor의 값을 비교해, 같으면 내 finger table의 값만 수정해줌
-                if s_predecessor_key == self.cur_node.key:
+                if s_predecessor.key == self.cur_node.key:
                     for i in range(successor_num):
                         self.finger_table.pop(i)
                         break
 
-                # 3. 만약 내 값이 predecessor의 값보다 더 앞에 있으면, predecessor에게 predecessor를 물어보는 과정 반복
-                if s_predecessor_key > self.cur_node.key:
-                    successor_node = Data(s_predecessor_key, s_predecessor_address)
+                # 3. 만약 내 값이 predecessor의 값보다 앞에 있으면, predecessor의 successor를 자신으로 설정하고, 자신의 successor를 predecessor의
+                # successor로 설정
+                elif self.cur_node.key > s_predecessor.key:
+                    notify_node_info(s_predecessor, self.cur_node, n.successor)
+                    notify_node_info(successor_node, self.cur_node, n.predecessor)
+                    break
+
+                # 4. 만약 내 값이 predecessor의 값보다 더 앞에 있으면, predecessor에게 predecessor를 물어보는 과정 반복
+                else:
+                    continue
 
     def finger_table_renew(self):
         # 네트워크 노드의 개수 차이를 구함
