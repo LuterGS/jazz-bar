@@ -22,11 +22,11 @@ class _NodeType(object):
 
     @constant
     def successor(self):
-        return 1
+        return 0
 
     @constant
     def d_successor(self):
-        return 2
+        return 1
 
 
 class _TossMessageType(object):

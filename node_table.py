@@ -21,7 +21,7 @@ class NodeTable(threading.Thread):
         self.cur_node = Data(ids, address)
 
         # 현재 네트워크에 존재하는 노드 수를 정의
-        self.network_node_num = 1  # 현재 존재하는 네트워크 노드 수
+        self.node_network_num = 1  # 현재 존재하는 네트워크 노드 수
 
         # finger table 정의
         self.finger_table = TableEntry()
@@ -38,20 +38,16 @@ class NodeTable(threading.Thread):
         # 보고서 상, 최초 init은 두 개의 노드가 있는 network이기 때문에, 해당 네트워크를 init해 줌
         if port == "50051":
             self.predecessor = Data("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
-            self.finger_table.set("0b03a4d8a7d8f8f4c7afae9aeda7d76b431f4cba", host + ":50054")
-            self.finger_table.entries.append(Data(ids, address))
-            self.network_node_num += 1
+            self.finger_table.append(self.predecessor)
+            self.node_network_num += 1
         elif port == "50054":
             self.predecessor = Data("a09b0ce42948043810a1f2cc7e7079aec7582f29", host + ":50051")
-            self.finger_table.set("t1", "t2")
-            self.finger_table.set("t2", "t1")
-            self.finger_table.entries[n.successor].update_info(self.predecessor, 0)
-            self.finger_table.entries[n.d_successor].update_info(self.cur_node, 1)
-            self.network_node_num += 1
+            self.finger_table.append(self.predecessor)
+            self.node_network_num += 1
         else:
             self.predecessor = Data(ids, address)
             self.finger_table.set(ids, address)  # 0 - successor
-            self.finger_table.entries.append(Data(ids, address))  # 1 - double successor
+            # self.finger_table.entries.append(Data(ids, address))  # 1 - double successor
 
     def log_nodes(self):
         # TODO : TableEntry 클래스의 summary 를 이용해서 처리할 수 있지 않을까?
@@ -93,14 +89,16 @@ class NodeTable(threading.Thread):
     def stabilize_successor(self):
         # 현재 health check를 통해, 제일 먼저 살아있는 successor 검출
         successor_num = 0
+        successor_found = False
         for i in range(len(self.finger_table.entries)):
             if node_health_check(self.finger_table.entries[i]):
                 successor_num = i
+                successor_found = True
                 break
 
         # 만약 successor가 살아있으면, health check를 그만둠
-        if successor_num == 0:
-            pass
+        if successor_num == 0 and successor_found:
+            return True
 
         # 만약 successor가 죽어있으면, 교체하는 작업을 수행
         else:
@@ -108,6 +106,7 @@ class NodeTable(threading.Thread):
             while True:
                 # 1. 현재 최우선적으로 살아있는 노드에게 노드의 predecessor를 물어봄
                 s_predecessor = request_node_info(successor_node, n.predecessor)
+                print(f"successor : {successor_node.value}, s_predecessor : {s_predecessor.value}")
 
                 # 2. 내 값과 predecessor의 값을 비교해, 같으면 내 finger table의 값만 수정해줌
                 if s_predecessor.key == self.cur_node.key:
@@ -129,7 +128,12 @@ class NodeTable(threading.Thread):
     def finger_table_renew(self):
         # 네트워크 노드의 개수 차이를 구함
         # 현재 네트워크에 존재하는 노드의 개수에 따른 finger table node 개수와, 실제 finger table 개수가 맞지 않으면, 순회하는 코드를 사용
-        if int(math.log2(self.network_node_num)) - len(self.finger_table.entries) != 0:
+        network_lens = math.log2(self.node_network_num)
+        if int(network_lens) - network_lens != 0:
+            network_lens = int(network_lens) + 1
+
+        if network_lens - len(self.finger_table.entries) != 0:
+            logging.debug(f'will do toss message')
             toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
             self.finger_table_update_cycle = 0
 
@@ -165,8 +169,9 @@ class NodeTable(threading.Thread):
             self.finger_table_renew()
 
             # 15초 간격으로 finger table 최신으로 업데이트 (주기 조정 가능)
-            if self.finger_table_update_cycle >= 5:
-                toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
+            # if self.finger_table_update_cycle > 5:
+            #     toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
+            #     self.finger_table_update_cycle = 0
 
             # 만약 disjoin이 일어나면 해당 cycle도 break
             if self.stop_flag:

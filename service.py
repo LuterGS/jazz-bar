@@ -71,14 +71,14 @@ def notify_node_info(target_node: Data, node_info: Data, which_node: int) -> int
                     규격은 utils.py의 class _NodeType를 사용합니다.
     :return: 해당 노드가 정보를 잘 받았으면 True(1), 해당 노드가 정보를 잘 받지 못했으면 (통신에 에러가 나면) 0을 return합니다.
     """
-    # change_type 는 utils.NodeType 의 명세를 따름
+    logging.debug(f'send {target_node.value} that {node_info.value} is it`s {which_node}')
     try:
         with grpc.insecure_channel(target_node.value) as channel:
             stub = chord_pb2_grpc.NotifyNodeStub(channel)
             response = stub.NotifyNodeChanged(chord_pb2.NodeType(
                 node_key=node_info.key, node_address=node_info.value, which_node=which_node
             ))
-        return response.pong
+        return True
     except _InactiveRpcError:
         return False
 
@@ -196,8 +196,7 @@ class NotifyNodeService(chord_pb2_grpc.NotifyNodeServicer):
                 # 해당 값을 append
                 self.node_table.finger_table.append(request.node_key, request.node_address)
 
-            finally:
-                return chord_pb2.HealthReply(pong=0)
+        return chord_pb2.HealthReply(pong=0)
 
 
 class TossMessageService(chord_pb2_grpc.TossMessageServicer):
@@ -214,25 +213,13 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
         notify_node_info(self.node_table.finger_table.entries[n.successor], new_node, n.predecessor)
 
         # 2. 새 노드의 predecessor 를 본인으로,
-        #    새 노드의 successor 를 본인의 기존 successor 로,
-        #    새 노드의 double_successor 를 본인의 기존 double_successor 로 설정함
+        #    새 노드의 successor 를 본인의 기존 successor 로
         #    추후에 finger table 을 사용할 때는, 반복문을 돌면서 그냥 finger table 자체를 할당해주면 됨.
         notify_node_info(new_node, self.node_table.cur_node, n.predecessor)
         notify_node_info(new_node, self.node_table.finger_table.entries[n.successor], n.successor)
-        notify_node_info(new_node, self.node_table.finger_table.entries[n.d_successor], n.d_successor)
 
-        # 3. 본인의 double successor 를 기존 successor 로, successor 를 새로운 노드로 업데이트
-        self.node_table.finger_table.entries[n.d_successor].update_info(
-            self.node_table.finger_table.entries[n.succssor].key, self.node_table.finger_table.entries[n.successor].value,
-            n.d_successor
-        )
+        # 3. 본인의 successor 를 새로운 노드로 업데이트
         self.node_table.finger_table.entries[n.successor].update_info(new_node, n.successor)
-
-        # 4. 본인의 predecessor 에게, double successor 가 새로운 노드임을 알려줌
-        threading.Thread(target=notify_node_info,
-                         args=(
-                             self.node_table.predecessor, new_node, n.finger_table(1),)
-                         ).start()
 
     def TM(self, request, context):
         logging.debug(f'Toss Message received from {request.node_address}')
@@ -262,11 +249,12 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
             logging.debug(f'received finger table update message : {request.node_key}. {request.node_address}, {request.message}')
 
             # 만약 받은 요청의 node key와 자신의 key가 같다면 (순회를 마쳤다면)
-            if request.node_key == self.node_table.cur_node.key:
-                logging.debug("finished receiving update message")
+            if request.node_address == self.node_table.cur_node.value:
 
                 # 현재 네트워크의 노드 수를 갱신해준 후 종료
                 self.node_table.node_network_num = request.message
+                logging.debug(f"finished receiving update message, node num is :{request.message}")
+
                 return chord_pb2.HealthReply(pong=0)
 
             # 만약 받은 요청의 node_type가 join_node 라면 (새로운 node가 join되었으면)
@@ -302,8 +290,8 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
                 # 원본에게 finger table을 업데이트하도록 설정
                 # 이 요청이 끝나야 계속 가도록 설정
                 is_starter_node_alive = notify_node_info(
-                    self.node_table.cur_node,
                     Data(request.node_key, request.node_address),
+                    self.node_table.cur_node,
                     int(cur_finger_table_num)
                 )
                 logging.debug(f"send res : {is_starter_node_alive}")

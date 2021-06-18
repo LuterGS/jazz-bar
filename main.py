@@ -13,7 +13,7 @@ def init_parser():
 # TODO : logger 추가
 def init_logger():
     log = logging.getLogger()
-    log.setLevel(logging.INFO)
+    log.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter(
         '[%(levelname)s] %(asctime)s (%(filename)s:%(lineno)d) : %(message)s'

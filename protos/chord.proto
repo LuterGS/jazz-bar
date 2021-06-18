@@ -43,7 +43,7 @@ message NodeType{
   string node_key = 1;
   string node_address = 2;
   int32 which_node = 3;
-  // 0=predecessor, 1=successor, 2=double_successor
+  // -1=predecessor, 0=successor, 1=double_successor
 }
 
 

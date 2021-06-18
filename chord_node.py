@@ -77,9 +77,11 @@ class ChordNode:
                 data_request(self.node_table.cur_node, nearest_node, Data(key, ""), d.delete)
 
         elif commands[0] == 'join':
-            toss_message(self.node_table.cur_node, Data("", commands[1]), t.join_node)
+            toss_message(self.node_table.cur_node, Data("dummy", commands[1]), t.join_node)
             logging.info(f"finishing join node, will update finger table...")
+            self.node_table.log_nodes()
             toss_message(self.node_table.cur_node, self.node_table.finger_table.entries[n.successor], t.finger_table_setting, 1, t.join_node)
+            logging.info(f'done update finger table!')
 
         elif commands[0] == 'disjoin':
             self.server.stop(0)  # HealthCheck를 못 받게 모든 서버 종료
