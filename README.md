@@ -2,6 +2,16 @@
 2021 1학기 분산시스템 및 컴퓨팅 기말 팀 프로젝트
 
 ## How to use
+#### 필수 라이브러리 설치
+
+- ```pip install -r requirements.txt```
+- 필요 모듈
+    - grpc
+    - protobuf
+    - multipledispatch
+
+#### 사용 명령어
+
 - `get`
     - ```shell script
       get key         # key에 해당하는 Value를 가져옴
