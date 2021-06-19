@@ -71,11 +71,11 @@ class NodeTable(threading.Thread):
                     alive_node_num = i
                     alive_node_found = True
 
-            if self.finger_table.entries[i].key <= key < self.finger_table.entries[i + 1]:
+            if self.finger_table.entries[i].key <= key < self.finger_table.entries[i + 1].key:
                 alive_node_num = i
                 alive_node_found = True
 
-        if self.finger_table.entries[-1] <= key and not alive_node_found:
+        if self.finger_table.entries[-1].key <= key and not alive_node_found:
             alive_node_num = len(self.finger_table.entries) - 1
 
         # health check를 통해, 죽어있으면 그것보다 앞의 노드를 return
@@ -106,7 +106,19 @@ class NodeTable(threading.Thread):
             while True:
                 # 1. 현재 최우선적으로 살아있는 노드에게 노드의 predecessor를 물어봄
                 s_predecessor = request_node_info(successor_node, n.predecessor)
+                if s_predecessor is False:
+                    notify_node_info(successor_node, self.cur_node, n.predecessor)
+                    self.finger_table.entries[n.successor].update_info(successor_node)
+                    break
+
                 print(f"successor : {successor_node.value}, s_predecessor : {s_predecessor.value}")
+
+                # 만약에 그 predecessor가 응답하지 않으면, 그냥 자기 자신을 successor_node의 predecessor로 삼고 종료
+                if node_health_check(s_predecessor) is False:
+                    notify_node_info(successor_node, self.cur_node, n.predecessor)
+                    print(successor_node.key, successor_node.value)
+                    self.finger_table.entries[n.successor].update_info(successor_node.key, successor_node.value)
+                    break
 
                 # 2. 내 값과 predecessor의 값을 비교해, 같으면 내 finger table의 값만 수정해줌
                 if s_predecessor.key == self.cur_node.key:
@@ -128,12 +140,15 @@ class NodeTable(threading.Thread):
     def finger_table_renew(self):
         # 네트워크 노드의 개수 차이를 구함
         # 현재 네트워크에 존재하는 노드의 개수에 따른 finger table node 개수와, 실제 finger table 개수가 맞지 않으면, 순회하는 코드를 사용
+        if self.node_network_num == 1:
+            return 0
+
         network_lens = math.log2(self.node_network_num)
         if int(network_lens) - network_lens != 0:
             network_lens = int(network_lens) + 1
 
         if network_lens - len(self.finger_table.entries) != 0:
-            logging.debug(f'will do toss message')
+            logging.info(f"will update finger table with ft_update...")
             toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
             self.finger_table_update_cycle = 0
 
@@ -169,9 +184,9 @@ class NodeTable(threading.Thread):
             self.finger_table_renew()
 
             # 15초 간격으로 finger table 최신으로 업데이트 (주기 조정 가능)
-            # if self.finger_table_update_cycle > 5:
-            #     toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
-            #     self.finger_table_update_cycle = 0
+            if self.finger_table_update_cycle > 5:
+                toss_message(self.cur_node, self.finger_table.entries[n.successor], t.finger_table_setting, 1)
+                self.finger_table_update_cycle = 0
 
             # 만약 disjoin이 일어나면 해당 cycle도 break
             if self.stop_flag:

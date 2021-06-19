@@ -261,12 +261,15 @@ class TossMessageService(chord_pb2_grpc.TossMessageServicer):
             if request.node_type == t.join_node:
 
                 # 현재 노드의 네트워크에 존재하는 노드개수 변수를 1 증가시킴
+                logging.info(f"node_network_num : {self.node_table.node_network_num} to {self.node_table.node_network_num + 1}")
                 self.node_table.node_network_num += 1
 
             # 만약 받은 요청의 node_type가 left_node 라면 (노드가 나간다면)
             if request.node_type == t.left_node:
 
                 # 현재 노드의 네트워크에 존재하는 노드개수 변수를 1 감소시킴
+                logging.info(
+                    f"node_network_num : {self.node_table.node_network_num} to {self.node_table.node_network_num - 1}")
                 self.node_table.node_network_num -= 1
 
                 logging.debug("sending update message complete, pass to successor")

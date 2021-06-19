@@ -42,7 +42,7 @@ class ChordNode:
         commands = command.split()
 
         if commands[0] == 'get':
-            key = commands[1]
+            key = generate_hash(commands[1])
             try:
                 value = self.data_table.get(key)
                 logging.info(f"request key:{key[:10]}'s value is {value}, stored in {self.address}")
@@ -52,8 +52,11 @@ class ChordNode:
                 data_request(self.node_table.cur_node, nearest_node, Data(key, ""), d.get)
 
         elif commands[0] == 'set':
-            key, value = commands[1].split(":")
-            key = generate_hash(key)
+            if len(commands) == 3:
+                key, value = commands[1], commands[2]
+            elif len(commands) == 2:
+                value = commands[1]
+                key = generate_hash(value)
             # 만약 자기 자신에 넣어야 하면
             cur_key = self.node_table.cur_node.key
             successor_key = self.node_table.finger_table.entries[n.successor].key
@@ -68,7 +71,7 @@ class ChordNode:
                 data_request(self.node_table.cur_node, nearest_node, Data(key, value), d.set)
 
         elif commands[0] == 'delete':
-            key = commands[1]
+            key = generate_hash(commands[1])
             try:
                 self.data_table.delete(key)
                 logging.info(f"request key:{key[:10]} is deleted from {self.address}")
